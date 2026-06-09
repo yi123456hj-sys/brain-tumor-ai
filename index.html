@@ -345,7 +345,7 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
           <div class="enhance-row"><span class="enhance-label">窗宽WW</span><input type="range" class="enhance-slider" id="sl-ww" min="1" max="400" value="200" oninput="applyWL()"></div>
           <div class="enhance-row"><span class="enhance-label">窗位WL</span><input type="range" class="enhance-slider" id="sl-wl" min="0" max="255" value="128" oninput="applyWL()"></div>
         </div>
-        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+        <div class="upload-zone" id="upload-zone">
           <span class="upload-icon">📡</span>
           <div class="upload-title" data-i18n="upload_drop">拖拽或点击上传</div>
           <div class="upload-sub" data-i18n="upload_sub">支持 JPG · PNG · WEBP · BMP</div>
@@ -718,6 +718,7 @@ function t(key) { return LANGS[currentLang][key] || LANGS.en[key] || key; }
 
 function setupDragDrop() {
   const zone = document.getElementById('upload-zone');
+  zone.addEventListener('click', () => document.getElementById('file-input').click());
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
   zone.addEventListener('drop', e => {
@@ -762,7 +763,6 @@ function showImagePreview(dataUrl, name, size) {
     </div>`;
   document.getElementById('img-toolbar').style.display = 'flex';
   setupZoom();
-  zone.addEventListener('click', () => document.getElementById('file-input').click(), {once:true});
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
   zone.addEventListener('drop', e => {
