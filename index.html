@@ -170,6 +170,59 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
 .toast.error .toast-icon{color:var(--red)}
 .toast.success .toast-icon{color:var(--green)}
 
+/* ── Image Toolbar ── */
+.img-toolbar{display:flex;gap:6px;padding:10px 12px 0;flex-wrap:wrap}
+.img-tool-btn{background:var(--card2);border:1px solid var(--border2);border-radius:8px;
+  padding:5px 10px;font-size:11px;color:var(--text2);cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;gap:4px;font-weight:500}
+.img-tool-btn:hover{border-color:var(--purple);color:var(--purple)}
+.img-tool-btn.active{background:rgba(168,85,247,.15);border-color:var(--purple);color:var(--purple)}
+
+/* ── Zoom ── */
+.img-wrap{transform-origin:top left;transition:transform .2s}
+.img-zoom-wrap{overflow:hidden;border-radius:calc(var(--radius2) - 2px);cursor:grab;position:relative}
+.img-zoom-wrap:active{cursor:grabbing}
+
+/* ── Heatmap ── */
+.heatmap-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;border-radius:calc(var(--radius2) - 2px);opacity:0;transition:opacity .4s}
+.heatmap-canvas.visible{opacity:.55}
+
+/* ── Risk Dashboard ── */
+.risk-section{margin:16px 20px 8px;padding:16px;
+  background:linear-gradient(135deg,rgba(255,77,109,.08),rgba(255,149,0,.05));
+  border:1px solid rgba(255,77,109,.2);border-radius:var(--radius2)}
+.risk-title{font-size:12px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px}
+.risk-gauge-wrap{display:flex;align-items:center;gap:20px}
+.risk-gauge{position:relative;width:90px;height:90px;flex-shrink:0}
+.risk-gauge svg{width:90px;height:90px}
+.risk-gauge-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.risk-gauge-num{font-size:22px;font-weight:800;color:#fff}
+.risk-gauge-sub{font-size:9px;color:var(--text3);text-transform:uppercase}
+.risk-info{flex:1}
+.risk-level{font-size:16px;font-weight:800;margin-bottom:6px}
+.risk-level.low{color:var(--green)}
+.risk-level.medium{color:var(--yellow)}
+.risk-level.high{color:var(--orange)}
+.risk-level.critical{color:var(--red)}
+.risk-actions{display:flex;flex-direction:column;gap:4px}
+.risk-action{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px}
+.risk-action::before{content:'→';color:var(--purple);font-weight:700}
+
+/* ── Export Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);
+  opacity:0;pointer-events:none;transition:opacity .3s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px;width:90%;max-width:400px}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:16px;color:#fff}
+.modal-btns{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.modal-btn{padding:12px;border-radius:var(--radius2);border:1px solid var(--border);
+  background:var(--card2);color:var(--text);font-size:14px;font-weight:600;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:10px}
+.modal-btn:hover{border-color:var(--purple);background:rgba(168,85,247,.1)}
+.modal-close{float:right;background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;line-height:1}
+
 @media(max-width:640px){
   header{padding:0 16px}
   main{padding:16px}
@@ -203,6 +256,13 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
         <span id="img-size-badge" style="font-size:11px;color:var(--text3)"></span>
       </div>
       <div class="card-body">
+        <div class="img-toolbar" id="img-toolbar" style="display:none">
+          <button class="img-tool-btn" onclick="zoomIn()">🔍+</button>
+          <button class="img-tool-btn" onclick="zoomOut()">🔍-</button>
+          <button class="img-tool-btn" onclick="resetZoom()">⬜ 重置</button>
+          <button class="img-tool-btn" id="heatmap-btn" onclick="toggleHeatmap()">🌡 热力图</button>
+          <button class="img-tool-btn" onclick="openExportModal()" id="export-btn" style="display:none">📥 导出报告</button>
+        </div>
         <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
           <span class="upload-icon">📡</span>
           <div class="upload-title" data-i18n="upload_drop">拖拽或点击上传</div>
@@ -243,6 +303,19 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
 
 <div class="bottom-bar">
   <span data-i18n="disclaimer">⚠ 本系统仅供教育与研究参考，不作为临床诊断依据。请咨询专业医疗人员。</span>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="export-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeExportModal()">×</button>
+    <div class="modal-title">📥 导出分析报告</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:4px">选择导出格式：</div>
+    <div class="modal-btns">
+      <button class="modal-btn" onclick="exportAsImage()">🖼 PNG 图片（含检测框）</button>
+      <button class="modal-btn" onclick="exportAsText()">📄 文字报告（TXT）</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast">
@@ -547,13 +620,18 @@ function showImagePreview(dataUrl, name, size) {
   zone.classList.add('has-image');
   zone.onclick = null;
   zone.innerHTML = `
-    <div class="img-wrap">
-      <img src="${dataUrl}" id="preview-img" alt="MRI preview">
-      <canvas class="canvas-overlay" id="result-canvas"></canvas>
-      <div class="img-overlay">
-        <div class="img-badge">📎 ${name}${size ? ' · ' + (size/1024).toFixed(1) + 'KB' : ''}</div>
+    <div class="img-zoom-wrap" id="img-zoom-wrap">
+      <div class="img-wrap" id="img-wrap-inner">
+        <img src="${dataUrl}" id="preview-img" alt="MRI preview">
+        <canvas class="heatmap-canvas" id="heatmap-canvas"></canvas>
+        <canvas class="canvas-overlay" id="result-canvas"></canvas>
+        <div class="img-overlay">
+          <div class="img-badge">📎 ${name}${size ? ' · ' + (size/1024).toFixed(1) + 'KB' : ''}</div>
+        </div>
       </div>
     </div>`;
+  document.getElementById('img-toolbar').style.display = 'flex';
+  setupZoom();
   zone.addEventListener('click', () => document.getElementById('file-input').click(), {once:true});
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
@@ -576,6 +654,7 @@ async function startAnalysis() {
       window._lastResult = result;
       renderResult(result);
       drawBBoxes(result.bboxes || []);
+      if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; }
       saveHistory(result);
       showToast('演示模式：' + t('toast_success'), 'success');
       setAnalyzingState(false);
@@ -615,6 +694,7 @@ For bboxes: x,y=top-left, w,h=width/height, all fractions 0.0-1.0. 1-3 tight box
     window._lastResult = result;
     renderResult(result);
     drawBBoxes(result.bboxes || []);
+    if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; }
     saveHistory(result);
     showToast(t('toast_success'), 'success');
 
@@ -720,6 +800,7 @@ function renderResult(r) {
         ${obs.map(o => `<div class="obs-item"><span class="obs-dot"></span>${o}</div>`).join('')}
       </div>
     </div>
+    ${detected ? renderRiskDashboard(r) : ''}
     <div class="disclaimer"><span>⚠</span><span>${t('disclaimer').replace('⚠ ','')}</span></div>
     <div class="info-section">
       <div class="info-grid">
@@ -868,6 +949,195 @@ function clearHistory() {
   history = [];
   localStorage.removeItem('bsai-brain-history');
   renderHistory();
+}
+
+// ── Risk Dashboard ──
+function renderRiskDashboard(r) {
+  const riskMap = { notumor:0, pituitary:30, meningioma:55, glioma:85 };
+  const sevBonus = { none:0, mild:5, moderate:15, severe:25 };
+  const score = Math.min(99, (riskMap[r.type]||50) + (sevBonus[r.severity]||0) + Math.round((r.confidence-70)*0.3));
+  const level = score>=80?'critical':score>=60?'high':score>=40?'medium':'low';
+  const levelZh = {critical:'极高风险',high:'高风险',medium:'中等风险',low:'低风险'}[level];
+  const urgency = {critical:'立即就医（24小时内）',high:'尽快就诊（1周内）',medium:'近期就诊（1月内）',low:'定期随访'}[level];
+  const actions = {
+    critical:['神经外科急会诊','立即增强MRI复查','完善术前评估'],
+    high:['神经外科门诊就诊','增强MRI+波谱分析','神经功能评估'],
+    medium:['神经内科随访','3个月后复查MRI','监测神经系统症状'],
+    low:['常规神经科随访','6个月后复查MRI','保持健康生活方式']
+  }[level];
+  const color = {critical:'var(--red)',high:'var(--orange)',medium:'var(--yellow)',low:'var(--green)'}[level];
+  const dashLen = 220, filled = Math.round(dashLen * score / 100);
+  return `<div class="risk-section">
+    <div class="risk-title">🎯 风险评估仪表盘</div>
+    <div class="risk-gauge-wrap">
+      <div class="risk-gauge">
+        <svg viewBox="0 0 90 90">
+          <circle cx="45" cy="45" r="35" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="8"/>
+          <circle cx="45" cy="45" r="35" fill="none" stroke="${color}" stroke-width="8"
+            stroke-dasharray="${filled} ${dashLen}" stroke-dashoffset="55"
+            stroke-linecap="round" style="transition:stroke-dasharray 1s ease"/>
+        </svg>
+        <div class="risk-gauge-label">
+          <div class="risk-gauge-num" style="color:${color}">${score}</div>
+          <div class="risk-gauge-sub">/ 100</div>
+        </div>
+      </div>
+      <div class="risk-info">
+        <div class="risk-level ${level}">${levelZh}</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">⏰ ${urgency}</div>
+        <div class="risk-actions">${actions.map(a=>`<div class="risk-action">${a}</div>`).join('')}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Zoom ──
+let _zoom = 1, _panX = 0, _panY = 0, _dragging = false, _lastX = 0, _lastY = 0;
+function setupZoom() {
+  _zoom = 1; _panX = 0; _panY = 0;
+  const wrap = document.getElementById('img-zoom-wrap');
+  if (!wrap) return;
+  wrap.addEventListener('wheel', e => { e.preventDefault(); zoomBy(e.deltaY < 0 ? 1.15 : 0.87); }, {passive:false});
+  wrap.addEventListener('mousedown', e => { _dragging=true; _lastX=e.clientX; _lastY=e.clientY; });
+  window.addEventListener('mousemove', e => {
+    if (!_dragging) return;
+    _panX += e.clientX-_lastX; _panY += e.clientY-_lastY;
+    _lastX=e.clientX; _lastY=e.clientY; applyZoom();
+  });
+  window.addEventListener('mouseup', () => _dragging=false);
+}
+function applyZoom() {
+  const inner = document.getElementById('img-wrap-inner');
+  if (inner) inner.style.transform = `translate(${_panX}px,${_panY}px) scale(${_zoom})`;
+}
+function zoomBy(f) { _zoom = Math.min(5, Math.max(1, _zoom*f)); if(_zoom===1){_panX=0;_panY=0;} applyZoom(); }
+function zoomIn() { zoomBy(1.3); }
+function zoomOut() { zoomBy(0.75); }
+function resetZoom() { _zoom=1; _panX=0; _panY=0; applyZoom(); }
+
+// ── Heatmap ──
+let _heatmapVisible = false;
+function drawHeatmap() {
+  const img = document.getElementById('preview-img');
+  const canvas = document.getElementById('heatmap-canvas');
+  if (!img || !canvas) return;
+  function render() {
+    const W = img.clientWidth, H = img.clientHeight;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    // Analyse at small scale
+    const SW = 64, SH = 64;
+    const off = document.createElement('canvas'); off.width=SW; off.height=SH;
+    const octx = off.getContext('2d');
+    octx.drawImage(img, 0, 0, SW, SH);
+    const data = octx.getImageData(0,0,SW,SH).data;
+    const gray = new Float32Array(SW*SH);
+    let sum=0;
+    for(let i=0;i<SW*SH;i++){gray[i]=0.299*data[i*4]+0.587*data[i*4+1]+0.114*data[i*4+2];sum+=gray[i];}
+    const mean=sum/(SW*SH);
+    // Draw bilinear-upscaled heatmap
+    const imgData = ctx.createImageData(W, H);
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++) {
+      const sx=(x/W)*(SW-1), sy=(y/H)*(SH-1);
+      const sx0=Math.floor(sx),sy0=Math.floor(sy),sx1=Math.min(sx0+1,SW-1),sy1=Math.min(sy0+1,SH-1);
+      const fx=sx-sx0,fy=sy-sy0;
+      const v=gray[sy0*SW+sx0]*(1-fx)*(1-fy)+gray[sy0*SW+sx1]*fx*(1-fy)+gray[sy1*SW+sx0]*(1-fx)*fy+gray[sy1*SW+sx1]*fx*fy;
+      const t=Math.max(0,Math.min(1,(v-mean*0.6)/(mean*1.2)));
+      // Jet colormap: blue→cyan→green→yellow→red
+      let r,g,b;
+      if(t<0.25){r=0;g=Math.round(t*4*255);b=255;}
+      else if(t<0.5){r=0;g=255;b=Math.round((1-(t-0.25)*4)*255);}
+      else if(t<0.75){r=Math.round((t-0.5)*4*255);g=255;b=0;}
+      else{r=255;g=Math.round((1-(t-0.75)*4)*255);b=0;}
+      const idx=(y*W+x)*4; imgData.data[idx]=r; imgData.data[idx+1]=g; imgData.data[idx+2]=b; imgData.data[idx+3]=180;
+    }
+    ctx.putImageData(imgData,0,0);
+  }
+  if(img.complete&&img.naturalWidth>0) render(); else img.onload=render;
+}
+function toggleHeatmap() {
+  const canvas = document.getElementById('heatmap-canvas');
+  const btn = document.getElementById('heatmap-btn');
+  if (!canvas) return;
+  _heatmapVisible = !_heatmapVisible;
+  canvas.classList.toggle('visible', _heatmapVisible);
+  btn.classList.toggle('active', _heatmapVisible);
+}
+
+// ── Export ──
+function openExportModal() { document.getElementById('export-modal').classList.add('open'); }
+function closeExportModal() { document.getElementById('export-modal').classList.remove('open'); }
+
+function exportAsImage() {
+  closeExportModal();
+  const img = document.getElementById('preview-img');
+  if (!img) return;
+  const r = window._lastResult;
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth || img.width;
+  canvas.height = img.naturalHeight || img.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  // Draw bboxes scaled to natural size
+  const dispW = img.clientWidth, dispH = img.clientHeight;
+  const scaleX = canvas.width / dispW, scaleY = canvas.height / dispH;
+  if (r && r.bboxes) {
+    const COLORS = {red:'#ff4d6d',blue:'#00b4ff',green:'#00d97e',yellow:'#ffd60a',purple:'#a855f7'};
+    r.bboxes.forEach(box => {
+      const color = COLORS[box.color]||'#a855f7';
+      const x=box.x*canvas.width, y=box.y*canvas.height, w=box.w*canvas.width, h=box.h*canvas.height;
+      ctx.strokeStyle=color; ctx.lineWidth=3; ctx.strokeRect(x,y,w,h);
+      const label=(currentLang==='en'?box.label_en:box.label)+' '+box.confidence+'%';
+      ctx.font='bold 20px Inter,sans-serif';
+      const tw=ctx.measureText(label).width+12;
+      ctx.fillStyle=color+'cc'; ctx.fillRect(x,y>28?y-28:y,tw,24);
+      ctx.fillStyle='#fff'; ctx.fillText(label,x+6,y>28?y-10:y+16);
+    });
+  }
+  // Watermark
+  ctx.fillStyle='rgba(255,255,255,.5)'; ctx.font='bold 18px Inter';
+  ctx.fillText('BrainScan AI — '+new Date().toLocaleDateString(), 12, canvas.height-12);
+
+  const a=document.createElement('a'); a.href=canvas.toDataURL('image/png');
+  a.download='BrainScan_Report_'+Date.now()+'.png'; a.click();
+  showToast('图片已导出', 'success');
+}
+
+function exportAsText() {
+  closeExportModal();
+  const r = window._lastResult;
+  if (!r) return;
+  const info = (TUMOR_INFO[r.type]||TUMOR_INFO.unclear)[currentLang]||(TUMOR_INFO[r.type]||TUMOR_INFO.unclear).en;
+  const lines = [
+    '═══════════════════════════════════════',
+    '       BrainScan AI — 脑肿瘤分析报告',
+    '═══════════════════════════════════════',
+    `日期：${new Date().toLocaleString()}`,
+    '',
+    `【检测结果】${r.detected?'检测到肿瘤':'未检测到肿瘤'}`,
+    `【肿瘤类型】${info.name} (${r.type})`,
+    `【置信度】  ${r.confidence}%`,
+    `【严重程度】${t('sev_'+r.severity)}`,
+    `【图像质量】${t('qual_'+r.quality)}`,
+    `【肿瘤位置】${currentLang==='zh'&&r.location_zh?r.location_zh:r.location}`,
+    '',
+    '【影像发现】',
+    ...((currentLang==='zh'&&r.observations_zh)?r.observations_zh:r.observations||[]).map(o=>'  • '+o),
+    '',
+    '【常见原因】'+info.cause,
+    '【治疗方案】'+info.treatment,
+    '【预后说明】'+info.prognosis,
+    '',
+    '───────────────────────────────────────',
+    '⚠ 本报告仅供教育参考，不作为临床诊断依据。',
+    '  请咨询专业神经外科医生。',
+    '═══════════════════════════════════════',
+  ];
+  const blob=new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='BrainScan_Report_'+Date.now()+'.txt'; a.click();
+  showToast('报告已导出', 'success');
 }
 
 function showToast(msg, type = 'info') {
