@@ -171,12 +171,75 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
 .toast.success .toast-icon{color:var(--green)}
 
 /* ── Image Toolbar ── */
-.img-toolbar{display:flex;gap:6px;padding:10px 12px 0;flex-wrap:wrap}
+.img-toolbar{display:flex;gap:5px;padding:10px 12px 0;flex-wrap:wrap}
 .img-tool-btn{background:var(--card2);border:1px solid var(--border2);border-radius:8px;
-  padding:5px 10px;font-size:11px;color:var(--text2);cursor:pointer;transition:all .2s;
-  display:flex;align-items:center;gap:4px;font-weight:500}
+  padding:5px 9px;font-size:11px;color:var(--text2);cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;gap:4px;font-weight:500;white-space:nowrap}
 .img-tool-btn:hover{border-color:var(--purple);color:var(--purple)}
 .img-tool-btn.active{background:rgba(168,85,247,.15);border-color:var(--purple);color:var(--purple)}
+.toolbar-sep{width:1px;background:var(--border2);margin:0 2px;align-self:stretch}
+
+/* ── Enhance Panel ── */
+.enhance-panel{padding:10px 12px;background:var(--card2);border-top:1px solid var(--border2);display:none;flex-wrap:wrap;gap:10px}
+.enhance-panel.open{display:flex}
+.enhance-row{display:flex;align-items:center;gap:8px;flex:1;min-width:160px}
+.enhance-label{font-size:11px;color:var(--text3);width:36px;flex-shrink:0}
+.enhance-slider{flex:1;accent-color:var(--purple);cursor:pointer;height:3px}
+
+/* ── Window/Level Panel ── */
+.wl-panel{padding:10px 12px;background:rgba(0,180,255,.04);border-top:1px solid var(--border2);display:none;flex-wrap:wrap;gap:10px}
+.wl-panel.open{display:flex}
+
+/* ── Draw Canvas ── */
+.draw-canvas{position:absolute;top:0;left:0;width:100%;height:100%;border-radius:calc(var(--radius2) - 2px)}
+.draw-canvas.annotate{cursor:crosshair}
+.draw-canvas.measure{cursor:crosshair}
+.draw-canvas.default{cursor:default;pointer-events:none}
+
+/* ── Dual Compare ── */
+.dual-wrap{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dual-slot{border:2px dashed var(--border);border-radius:var(--radius2);min-height:200px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;
+  position:relative;overflow:hidden;background:rgba(0,0,0,.2);font-size:13px;color:var(--text3)}
+.dual-slot:hover{border-color:var(--purple);color:var(--purple)}
+.dual-slot img{width:100%;height:100%;object-fit:contain;display:block}
+.dual-label{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.7);
+  border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text2)}
+
+/* ── AI Chat ── */
+.chat-section{margin-top:24px}
+.chat-messages{padding:16px 20px;display:flex;flex-direction:column;gap:10px;max-height:280px;overflow-y:auto}
+.chat-msg{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6;max-width:90%}
+.chat-msg.user{background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.2);align-self:flex-end;color:var(--text)}
+.chat-msg.ai{background:var(--card2);border:1px solid var(--border2);align-self:flex-start;color:var(--text2)}
+.chat-msg.thinking{opacity:.6;font-style:italic}
+.chat-input-row{padding:0 16px 16px;display:flex;gap:8px}
+.chat-input{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:10px;
+  padding:10px 14px;color:var(--text);font-size:13px;outline:none;font-family:inherit}
+.chat-input:focus{border-color:var(--purple)}
+.chat-send{background:linear-gradient(135deg,#6d28d9,#4c1d95);border:none;border-radius:10px;
+  padding:10px 16px;color:#fff;cursor:pointer;font-size:16px;transition:all .2s}
+.chat-send:hover{opacity:.85}
+.chat-send:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Stats Chart ── */
+.stats-section{margin-top:24px}
+.chart-wrap{padding:16px 20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.pie-canvas{flex-shrink:0}
+.chart-legend{display:flex;flex-direction:column;gap:8px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* ── Print ── */
+@media print{
+  header,#img-toolbar,.btn-analyze,.bottom-bar,.chat-section,.history-section,.stats-section,
+  #export-modal,.toast,.img-toolbar{display:none!important}
+  body{background:#fff!important;color:#000!important}
+  .card{border:1px solid #ccc!important;background:#fff!important;break-inside:avoid}
+  .workspace{display:block!important}
+  .tumor-type-name,.risk-level,.metric-val{color:#000!important}
+  .text2{color:#333!important}
+}
 
 /* ── Zoom ── */
 .img-wrap{transform-origin:top left;transition:transform .2s}
@@ -257,11 +320,30 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
       </div>
       <div class="card-body">
         <div class="img-toolbar" id="img-toolbar" style="display:none">
-          <button class="img-tool-btn" onclick="zoomIn()">🔍+</button>
-          <button class="img-tool-btn" onclick="zoomOut()">🔍-</button>
-          <button class="img-tool-btn" onclick="resetZoom()">⬜ 重置</button>
+          <button class="img-tool-btn" onclick="zoomIn()" title="放大">🔍+</button>
+          <button class="img-tool-btn" onclick="zoomOut()" title="缩小">🔍-</button>
+          <button class="img-tool-btn" onclick="resetZoom()" title="重置视图">⬜ 重置</button>
+          <div class="toolbar-sep"></div>
           <button class="img-tool-btn" id="heatmap-btn" onclick="toggleHeatmap()">🌡 热力图</button>
-          <button class="img-tool-btn" onclick="openExportModal()" id="export-btn" style="display:none">📥 导出报告</button>
+          <button class="img-tool-btn" id="enhance-btn" onclick="toggleEnhance()">⚙️ 图像增强</button>
+          <button class="img-tool-btn" id="wl-btn" onclick="toggleWL()">🪟 调窗</button>
+          <div class="toolbar-sep"></div>
+          <button class="img-tool-btn" id="annotate-btn" onclick="setDrawMode('annotate')">🖊 标注</button>
+          <button class="img-tool-btn" id="measure-btn" onclick="setDrawMode('measure')">📐 测量</button>
+          <button class="img-tool-btn" onclick="clearAnnotations()" title="清除标注">🗑</button>
+          <div class="toolbar-sep"></div>
+          <button class="img-tool-btn" onclick="openExportModal()" id="export-btn" style="display:none">📥 导出</button>
+          <button class="img-tool-btn" onclick="printReport()" id="print-btn" style="display:none">🖨 打印</button>
+        </div>
+        <div class="enhance-panel" id="enhance-panel">
+          <div class="enhance-row"><span class="enhance-label">亮度</span><input type="range" class="enhance-slider" id="sl-brightness" min="50" max="200" value="100" oninput="applyEnhance()"></div>
+          <div class="enhance-row"><span class="enhance-label">对比度</span><input type="range" class="enhance-slider" id="sl-contrast" min="50" max="300" value="100" oninput="applyEnhance()"></div>
+          <div class="enhance-row"><span class="enhance-label">锐化</span><input type="range" class="enhance-slider" id="sl-sharp" min="0" max="5" value="0" step="0.5" oninput="applyEnhance()"></div>
+          <div class="enhance-row"><span class="enhance-label">饱和度</span><input type="range" class="enhance-slider" id="sl-saturate" min="0" max="200" value="100" oninput="applyEnhance()"></div>
+        </div>
+        <div class="wl-panel" id="wl-panel">
+          <div class="enhance-row"><span class="enhance-label">窗宽WW</span><input type="range" class="enhance-slider" id="sl-ww" min="1" max="400" value="200" oninput="applyWL()"></div>
+          <div class="enhance-row"><span class="enhance-label">窗位WL</span><input type="range" class="enhance-slider" id="sl-wl" min="0" max="255" value="128" oninput="applyWL()"></div>
         </div>
         <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
           <span class="upload-icon">📡</span>
@@ -292,6 +374,38 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
     </div>
   </div>
 
+  <!-- Dual Compare -->
+  <div class="card" id="dual-section">
+    <div class="card-header">
+      <div class="card-title"><span class="icon">🔀</span><span>双图对比分析</span></div>
+      <button onclick="clearDual()" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer">清除</button>
+    </div>
+    <div class="card-body">
+      <div class="dual-wrap">
+        <div class="dual-slot" id="dual-a" onclick="loadDualSlot('a')">
+          <span>点击加载影像 A</span>
+        </div>
+        <div class="dual-slot" id="dual-b" onclick="loadDualSlot('b')">
+          <span>点击加载影像 B</span>
+        </div>
+      </div>
+      <input type="file" id="dual-file-input" accept="image/*" style="display:none" onchange="handleDualFile(event)">
+      <div id="dual-compare-result" style="margin-top:12px;font-size:13px;color:var(--text2);display:none"></div>
+    </div>
+  </div>
+
+  <!-- Stats Chart -->
+  <div class="card stats-section" id="stats-section" style="display:none">
+    <div class="card-header">
+      <div class="card-title"><span class="icon">📊</span><span>历史统计分析</span></div>
+    </div>
+    <div class="chart-wrap">
+      <canvas class="pie-canvas" id="stats-canvas" width="160" height="160"></canvas>
+      <div class="chart-legend" id="chart-legend"></div>
+    </div>
+  </div>
+
+  <!-- History -->
   <div class="card history-section" id="history-section" style="display:none">
     <div class="card-header">
       <div class="card-title"><span class="icon">🗂</span><span data-i18n="history_title">分析历史</span></div>
@@ -299,6 +413,22 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
     </div>
     <div class="history-grid" id="history-grid"></div>
   </div>
+
+  <!-- AI Chat -->
+  <div class="card chat-section" id="chat-section" style="display:none">
+    <div class="card-header">
+      <div class="card-title"><span class="icon">💬</span><span>AI 影像问答</span></div>
+      <button onclick="clearChat()" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer">清除</button>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-msg ai">你好！我是 BrainScan AI。分析完成后，你可以向我提问关于此影像的任何问题，例如：<br>• 肿瘤边界是否清晰？<br>• 有没有水肿？<br>• 建议做哪些进一步检查？</div>
+    </div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chat-input" placeholder="输入问题…（需要 Gemini API Key）" onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="chat-send" id="chat-send" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+
 </main>
 
 <div class="bottom-bar">
@@ -915,6 +1045,7 @@ function saveHistory(result) {
   if (history.length > 8) history = history.slice(0, 8);
   localStorage.setItem('bsai-brain-history', JSON.stringify(history));
   renderHistory();
+  renderStatsChart();
 }
 
 function renderHistory() {
@@ -949,6 +1080,285 @@ function clearHistory() {
   history = [];
   localStorage.removeItem('bsai-brain-history');
   renderHistory();
+}
+
+// ── Image Enhance ──
+function toggleEnhance() {
+  const p = document.getElementById('enhance-panel');
+  const b = document.getElementById('enhance-btn');
+  const open = p.classList.toggle('open');
+  b.classList.toggle('active', open);
+  if (open) { document.getElementById('wl-panel').classList.remove('open'); document.getElementById('wl-btn').classList.remove('active'); }
+}
+function applyEnhance() {
+  const img = document.getElementById('preview-img');
+  if (!img) return;
+  const b = document.getElementById('sl-brightness').value;
+  const c = document.getElementById('sl-contrast').value;
+  const s = document.getElementById('sl-sharp').value;
+  const sat = document.getElementById('sl-saturate').value;
+  img.style.filter = `brightness(${b}%) contrast(${c}%) saturate(${sat}%) ${s>0?`url(#sharp-filter)`:''}`;
+  // sharpen via SVG filter injected once
+  if (s > 0) {
+    let svg = document.getElementById('svg-filters');
+    if (!svg) { svg = document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.id='svg-filters'; svg.style.cssText='position:absolute;width:0;height:0'; document.body.appendChild(svg); }
+    svg.innerHTML = `<defs><filter id="sharp-filter"><feConvolveMatrix order="3" kernelMatrix="-${s} -${s} -${s} -${s} ${1+8*s} -${s} -${s} -${s} -${s}"/></filter></defs>`;
+    img.style.filter = `brightness(${b}%) contrast(${c}%) saturate(${sat}%) url(#sharp-filter)`;
+  }
+}
+
+// ── Window / Level ──
+function toggleWL() {
+  const p = document.getElementById('wl-panel');
+  const b = document.getElementById('wl-btn');
+  const open = p.classList.toggle('open');
+  b.classList.toggle('active', open);
+  if (open) { document.getElementById('enhance-panel').classList.remove('open'); document.getElementById('enhance-btn').classList.remove('active'); }
+}
+function applyWL() {
+  const ww = parseInt(document.getElementById('sl-ww').value);
+  const wl = parseInt(document.getElementById('sl-wl').value);
+  const lo = Math.max(0, wl - ww/2) / 255 * 100;
+  const hi = Math.min(255, wl + ww/2) / 255 * 100;
+  const img = document.getElementById('preview-img');
+  if (img) img.style.filter = `contrast(${Math.round(25500/ww)}%) brightness(${Math.round(100 + (128-wl)/255*60)}%)`;
+}
+
+// ── Draw / Annotate / Measure ──
+let _drawMode = 'default', _annotations = [], _measuring = false, _mStart = null;
+function setDrawMode(mode) {
+  if (_drawMode === mode) { _drawMode = 'default'; document.getElementById(mode+'-btn').classList.remove('active'); updateDrawCanvas(); return; }
+  _drawMode = mode;
+  ['annotate','measure'].forEach(m => document.getElementById(m+'-btn').classList.toggle('active', m===mode));
+  updateDrawCanvas();
+  const dc = document.getElementById('draw-canvas');
+  if (!dc) return;
+  dc.className = 'draw-canvas ' + mode;
+  dc.style.pointerEvents = 'all';
+}
+function updateDrawCanvas() {
+  const img = document.getElementById('preview-img');
+  const zone = document.getElementById('img-zoom-wrap');
+  if (!img || !zone) return;
+  let dc = document.getElementById('draw-canvas');
+  if (!dc) {
+    dc = document.createElement('canvas');
+    dc.id = 'draw-canvas';
+    dc.className = 'draw-canvas';
+    dc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border-radius:calc(12px - 2px)';
+    document.getElementById('img-wrap-inner').appendChild(dc);
+  }
+  dc.width = img.clientWidth; dc.height = img.clientHeight;
+  dc.style.pointerEvents = _drawMode === 'default' ? 'none' : 'all';
+  dc.className = 'draw-canvas ' + _drawMode;
+  redrawAnnotations();
+  dc.onmousedown = startDraw;
+}
+function startDraw(e) {
+  const dc = document.getElementById('draw-canvas');
+  const rect = dc.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  if (_drawMode === 'annotate') {
+    const text = prompt('输入标注文字（留空取消）：');
+    if (text) { _annotations.push({type:'text', x, y, text}); redrawAnnotations(); }
+  } else if (_drawMode === 'measure') {
+    _measuring = true; _mStart = {x, y};
+    dc.onmousemove = moveMeasure;
+    dc.onmouseup = endMeasure;
+  }
+}
+function moveMeasure(e) {
+  if (!_measuring || !_mStart) return;
+  const dc = document.getElementById('draw-canvas');
+  const rect = dc.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  redrawAnnotations();
+  const ctx = dc.getContext('2d');
+  drawMeasureLine(ctx, _mStart.x, _mStart.y, x, y, true);
+}
+function endMeasure(e) {
+  if (!_measuring || !_mStart) return;
+  _measuring = false;
+  const dc = document.getElementById('draw-canvas');
+  const rect = dc.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  const dx = x - _mStart.x, dy = y - _mStart.y;
+  const px = Math.sqrt(dx*dx + dy*dy);
+  const mm = (px / (dc.width / 200)).toFixed(1);
+  _annotations.push({type:'measure', x1:_mStart.x, y1:_mStart.y, x2:x, y2:y, px:Math.round(px), mm});
+  _mStart = null; dc.onmousemove = null; dc.onmouseup = null;
+  redrawAnnotations();
+}
+function drawMeasureLine(ctx, x1, y1, x2, y2, preview) {
+  const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+  ctx.save();
+  ctx.strokeStyle = preview ? 'rgba(0,229,204,.8)' : 'var(--teal,#00e5cc)';
+  ctx.lineWidth = 2; ctx.setLineDash(preview?[4,3]:[]);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#fff'; ctx.font='bold 12px Inter,sans-serif';
+  const mm = (len/((document.getElementById('draw-canvas').width||200)/200)).toFixed(1);
+  ctx.fillText(`${Math.round(len)}px ≈ ${mm}mm`, (x1+x2)/2+4, (y1+y2)/2-4);
+  ctx.restore();
+}
+function redrawAnnotations() {
+  const dc = document.getElementById('draw-canvas');
+  if (!dc) return;
+  const ctx = dc.getContext('2d');
+  ctx.clearRect(0, 0, dc.width, dc.height);
+  _annotations.forEach(a => {
+    if (a.type === 'text') {
+      ctx.save();
+      ctx.fillStyle = 'rgba(168,85,247,.9)';
+      ctx.font = 'bold 13px Inter,sans-serif';
+      const tw = ctx.measureText(a.text).width + 10;
+      ctx.fillRect(a.x, a.y-16, tw, 20);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(a.text, a.x+5, a.y-2);
+      // dot
+      ctx.beginPath(); ctx.arc(a.x, a.y+4, 4, 0, Math.PI*2);
+      ctx.fillStyle='var(--purple,#a855f7)'; ctx.fill();
+      ctx.restore();
+    } else if (a.type === 'measure') {
+      drawMeasureLine(ctx, a.x1, a.y1, a.x2, a.y2, false);
+    }
+  });
+}
+function clearAnnotations() { _annotations = []; redrawAnnotations(); }
+
+// ── Dual Compare ──
+let _dualSlot = null;
+function loadDualSlot(slot) {
+  _dualSlot = slot;
+  document.getElementById('dual-file-input').click();
+}
+function handleDualFile(e) {
+  const file = e.target.files[0];
+  if (!file || !_dualSlot) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const slot = document.getElementById('dual-' + _dualSlot);
+    slot.innerHTML = `<div class="dual-label">${_dualSlot.toUpperCase()}</div><img src="${ev.target.result}" alt="">`;
+    slot.onclick = null;
+    checkDualReady();
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+function checkDualReady() {
+  const a = document.getElementById('dual-a').querySelector('img');
+  const b = document.getElementById('dual-b').querySelector('img');
+  if (!a || !b) return;
+  const res = document.getElementById('dual-compare-result');
+  res.style.display = 'block';
+  res.innerHTML = `<div style="padding:10px;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.15);border-radius:8px;font-size:13px;color:var(--text2)">
+    ✅ 两张影像已加载完成。可分别点击上方"开始AI分析"对每张影像进行独立分析，对比诊断结果。
+    <br><br>💡 <strong style="color:var(--purple)">对比建议：</strong>注意两侧对称性差异、信号强度变化、病灶进展情况。
+  </div>`;
+}
+function clearDual() {
+  ['a','b'].forEach(s => {
+    const slot = document.getElementById('dual-' + s);
+    slot.innerHTML = `<span>点击加载影像 ${s.toUpperCase()}</span>`;
+    slot.onclick = () => loadDualSlot(s);
+  });
+  document.getElementById('dual-compare-result').style.display = 'none';
+}
+
+// ── Stats Chart ──
+function renderStatsChart() {
+  if (history.length === 0) { document.getElementById('stats-section').style.display='none'; return; }
+  document.getElementById('stats-section').style.display='block';
+  const counts = {};
+  history.forEach(h => { counts[h.type] = (counts[h.type]||0) + 1; });
+  const COLORS_MAP = {glioma:'#ff4d6d',meningioma:'#a855f7',pituitary:'#00b4ff',notumor:'#00d97e',unclear:'#ffd60a'};
+  const NAMES = {glioma:'胶质瘤',meningioma:'脑膜瘤',pituitary:'垂体瘤',notumor:'正常',unclear:'不明确'};
+  const canvas = document.getElementById('stats-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,160,160);
+  const total = Object.values(counts).reduce((a,b)=>a+b,0);
+  let angle = -Math.PI/2;
+  const entries = Object.entries(counts);
+  entries.forEach(([type,count]) => {
+    const slice = (count/total) * Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(80,80);
+    ctx.arc(80,80,70,angle,angle+slice);
+    ctx.closePath(); ctx.fillStyle = COLORS_MAP[type]||'#888'; ctx.fill();
+    angle += slice;
+  });
+  // donut hole
+  ctx.beginPath(); ctx.arc(80,80,35,0,Math.PI*2); ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--card')||'#0d1829'; ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='bold 20px Inter'; ctx.textAlign='center'; ctx.fillText(total, 80, 76);
+  ctx.font='11px Inter'; ctx.fillStyle='#94a3b8'; ctx.fillText('总计', 80, 92);
+  ctx.textAlign='left';
+  // Legend
+  document.getElementById('chart-legend').innerHTML = entries.map(([type,count])=>`
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${COLORS_MAP[type]||'#888'}"></div>
+      <span>${NAMES[type]||type}</span>
+      <span style="margin-left:auto;font-weight:700;color:#fff">${count}</span>
+      <span style="color:var(--text3);margin-left:4px">${Math.round(count/total*100)}%</span>
+    </div>`).join('');
+}
+
+// ── Print ──
+function printReport() { window.print(); }
+
+// ── AI Chat ──
+const CHAT_HISTORY = [];
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  if (!currentImage) { showToast('请先上传并分析影像', 'error'); return; }
+  input.value = '';
+  appendChat('user', msg);
+  appendChat('ai', '正在思考…', true);
+  document.getElementById('chat-send').disabled = true;
+
+  const r = window._lastResult;
+  const context = r ? `当前影像分析结果：类型=${r.type}，置信度=${r.confidence}%，位置=${r.location_zh||r.location}，严重程度=${r.severity}。` : '';
+  try {
+    if (!GEMINI_KEY) {
+      await new Promise(res=>setTimeout(res,1200));
+      const demoAnswers = [
+        `根据当前分析，${r?'该'+（TUMOR_INFO[r.type]||TUMOR_INFO.unclear)[currentLang||'zh'].name:'影像'}显示需要进一步评估。建议咨询专业神经外科医生。`,
+        '从影像特征来看，建议进行增强MRI复查以获取更准确的诊断信息。',
+        '注意：本系统处于演示模式，AI问答需要有效的 Gemini API Key 才能提供真实分析。'
+      ];
+      updateLastChat(demoAnswers[Math.floor(Math.random()*demoAnswers.length)]);
+      return;
+    }
+    const resp = await fetch(GEMINI_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ contents:[{parts:[
+        {inline_data:{mime_type:currentMime,data:currentImage}},
+        {text:`你是一位专业神经放射科AI助手。${context}\n\n用户问题：${msg}\n\n请用简洁的中文回答，不超过150字。`}
+      ]}], generationConfig:{temperature:0.3,maxOutputTokens:300}})
+    });
+    const data = await resp.json();
+    updateLastChat(data.candidates[0].content.parts[0].text);
+  } catch(e) {
+    updateLastChat('抱歉，回答失败：' + e.message);
+  } finally {
+    document.getElementById('chat-send').disabled = false;
+  }
+}
+function appendChat(role, text, thinking=false) {
+  const box = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + role + (thinking?' thinking':'');
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+function updateLastChat(text) {
+  const msgs = document.getElementById('chat-messages').querySelectorAll('.chat-msg.ai');
+  const last = msgs[msgs.length-1];
+  if (last) { last.textContent = text; last.classList.remove('thinking'); }
+}
+function clearChat() {
+  document.getElementById('chat-messages').innerHTML = '<div class="chat-msg ai">对话已清除。请继续提问。</div>';
 }
 
 // ── Risk Dashboard ──
