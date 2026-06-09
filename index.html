@@ -230,6 +230,9 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
 .legend-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)}
 .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
+/* ── Fullscreen ── */
+.upload-zone:-webkit-full-screen{background:#000;display:flex;align-items:center;justify-content:center}
+.upload-zone:fullscreen{background:#000;display:flex;align-items:center;justify-content:center}
 /* ── Sequence buttons ── */
 .img-tool-btn.seq-active{background:rgba(168,85,247,.25);border-color:var(--purple);color:var(--purple)}
 /* ── Tumor size badge ── */
@@ -303,6 +306,8 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
   .metrics-grid{grid-template-columns:1fr 1fr}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -350,7 +355,14 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
           <button class="img-tool-btn" id="seq-dwi-btn" onclick="setSequence('dwi')" title="DWI序列">DWI</button>
           <button class="img-tool-btn" onclick="setSequence('orig')" title="原始">⟳</button>
           <div class="toolbar-sep"></div>
+          <button class="img-tool-btn" onclick="rotateImg(90)" title="旋转">🔄</button>
+          <button class="img-tool-btn" onclick="flipImg('h')" title="水平翻转">↔️</button>
+          <button class="img-tool-btn" onclick="flipImg('v')" title="垂直翻转">↕️</button>
+          <button class="img-tool-btn" onclick="autoOptimize()" title="自动优化">✨ 优化</button>
+          <button class="img-tool-btn" onclick="toggleFullscreen()" title="全屏">⛶</button>
+          <div class="toolbar-sep"></div>
           <button class="img-tool-btn" onclick="openExportModal()" id="export-btn" style="display:none">📥 导出</button>
+          <button class="img-tool-btn" onclick="exportPDF()" id="pdf-btn" style="display:none">📄 PDF</button>
           <button class="img-tool-btn" onclick="printReport()" id="print-btn" style="display:none">🖨 打印</button>
         </div>
         <div class="enhance-panel" id="enhance-panel">
@@ -449,6 +461,9 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
       <button class="chat-send" id="chat-send" onclick="sendChat()">➤</button>
     </div>
   </div>
+
+  <!-- Pixel Tooltip -->
+  <div id="pixel-tooltip" style="display:none;position:fixed;background:rgba(0,0,0,.85);color:#fff;padding:5px 10px;border-radius:8px;font-size:12px;pointer-events:none;z-index:9990;border:1px solid rgba(168,85,247,.4)"></div>
 
   <!-- DICOM Info -->
   <div class="card" id="dicom-section" style="display:none;margin-top:0">
@@ -752,6 +767,7 @@ const TUMOR_INFO = {
     ko:{name:'불명확한 유형',sub:'Unclear',cause:'이미지 품질로 인해 정확한 판단 어려움',treatment:'조영 MRI 또는 다중 시퀀스 스캔 권장',prognosis:'최종 진단에 따라 다름'},
   }
 };
+window.TUMOR_INFO = TUMOR_INFO;
 
 let currentLang = 'zh';
 let currentImage = null;
@@ -833,6 +849,8 @@ function showImagePreview(dataUrl, name, size) {
     </div>`;
   document.getElementById('img-toolbar').style.display = 'flex';
   setupZoom();
+  resetImgTransform();
+  setTimeout(setupPixelTooltip, 100);
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
   zone.addEventListener('drop', e => {
@@ -854,7 +872,7 @@ async function startAnalysis() {
       window._lastResult = result;
       renderResult(result);
       drawBBoxes(result.bboxes || []);
-      if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; document.getElementById('print-btn').style.display='flex'; }
+      if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; document.getElementById('pdf-btn').style.display='flex'; document.getElementById('print-btn').style.display='flex'; }
       renderTumorSize(result.bboxes, document.getElementById('preview-img'));
       renderDicomInfo(window._currentFilename);
       saveHistory(result);
@@ -896,7 +914,7 @@ For bboxes: x,y=top-left, w,h=width/height, all fractions 0.0-1.0. 1-3 tight box
     window._lastResult = result;
     renderResult(result);
     drawBBoxes(result.bboxes || []);
-    if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; document.getElementById('print-btn').style.display='flex'; }
+    if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; document.getElementById('pdf-btn').style.display='flex'; document.getElementById('print-btn').style.display='flex'; }
     renderTumorSize(result.bboxes, document.getElementById('preview-img'));
     renderDicomInfo(window._currentFilename);
     saveHistory(result);
@@ -1433,6 +1451,157 @@ function updateLastChat(text) {
 }
 function clearChat() {
   document.getElementById('chat-messages').innerHTML = '<div class="chat-msg ai">对话已清除。请继续提问。</div>';
+}
+
+// ── Rotate / Flip ──
+let _imgRotate = 0, _imgFlipH = 1, _imgFlipV = 1;
+function rotateImg(deg) {
+  _imgRotate = (_imgRotate + deg) % 360;
+  applyImgTransform();
+}
+function flipImg(dir) {
+  if (dir === 'h') _imgFlipH *= -1;
+  else _imgFlipV *= -1;
+  applyImgTransform();
+}
+function applyImgTransform() {
+  const wrap = document.getElementById('img-wrap-inner');
+  if (!wrap) return;
+  wrap.style.transform = `rotate(${_imgRotate}deg) scaleX(${_imgFlipH}) scaleY(${_imgFlipV})`;
+  wrap.style.transition = 'transform .3s';
+}
+function resetImgTransform() { _imgRotate=0; _imgFlipH=1; _imgFlipV=1; applyImgTransform(); }
+
+// ── Auto Optimize ──
+function autoOptimize() {
+  const imgEl = document.getElementById('preview-img');
+  if (!imgEl) { showToast('请先上传影像', 'error'); return; }
+  const W=128,H=128,off=document.createElement('canvas');
+  off.width=W;off.height=H;
+  const ctx=off.getContext('2d');ctx.drawImage(imgEl,0,0,W,H);
+  const d=ctx.getImageData(0,0,W,H).data;
+  let min=255,max=0,sum=0,n=W*H;
+  for(let i=0;i<n;i++){const g=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2];if(g<min)min=g;if(g>max)max=g;sum+=g;}
+  const mean=sum/n;
+  const range=max-min||1;
+  const contrast=Math.round(Math.min(300,25500/range));
+  const brightness=Math.round(100+(128-mean)/255*60);
+  // Apply to enhance sliders too
+  const slB=document.getElementById('sl-brightness');
+  const slC=document.getElementById('sl-contrast');
+  if(slB){slB.value=Math.max(50,Math.min(200,brightness));}
+  if(slC){slC.value=Math.max(50,Math.min(300,contrast));}
+  imgEl.style.filter=`brightness(${brightness}%) contrast(${contrast}%)`;
+  showToast('已自动优化影像对比度', 'success');
+}
+
+// ── Fullscreen ──
+function toggleFullscreen() {
+  const zone = document.getElementById('upload-zone');
+  if (!zone) return;
+  if (!document.fullscreenElement) {
+    zone.requestFullscreen().catch(()=>showToast('全屏不可用', 'error'));
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+// ── PDF Export ──
+async function exportPDF() {
+  if (!window._lastResult) { showToast('请先完成分析', 'error'); return; }
+  showToast('正在生成PDF…', 'success');
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p','mm','a4');
+    const r = window._lastResult;
+    const W = 210, margin = 15;
+
+    // Header
+    doc.setFillColor(13,24,41); doc.rect(0,0,W,30,'F');
+    doc.setTextColor(168,85,247); doc.setFontSize(18); doc.setFont('helvetica','bold');
+    doc.text('BrainScan AI', margin, 18);
+    doc.setFontSize(9); doc.setTextColor(148,163,184);
+    doc.text('Brain Tumor Intelligent Analysis System', margin, 24);
+    doc.setTextColor(148,163,184); doc.setFontSize(9);
+    doc.text(new Date().toLocaleString(), W-margin, 18, {align:'right'});
+
+    // Image
+    const imgEl = document.getElementById('preview-img');
+    let imgY = 35;
+    if (imgEl) {
+      const off=document.createElement('canvas');off.width=320;off.height=320;
+      const ctx=off.getContext('2d');ctx.drawImage(imgEl,0,0,320,320);
+      const imgData=off.toDataURL('image/jpeg',0.8);
+      doc.addImage(imgData,'JPEG',margin,imgY,80,80);
+    }
+
+    // Results
+    let y = imgY;
+    const rx = margin + 88;
+    doc.setFontSize(14); doc.setFont('helvetica','bold');
+    doc.setTextColor(r.detected?220:80, r.detected?80:200, r.detected?80:80);
+    doc.text(r.detected ? 'TUMOR DETECTED' : 'NO TUMOR', rx, y+10);
+    doc.setTextColor(50,50,50); doc.setFontSize(10); doc.setFont('helvetica','normal');
+    doc.text(`Type: ${r.type}`, rx, y+20);
+    doc.text(`Confidence: ${r.confidence}%`, rx, y+28);
+    doc.text(`Severity: ${r.severity}`, rx, y+36);
+    doc.text(`Location: ${r.location}`, rx, y+44);
+
+    y = imgY + 90;
+    doc.setFillColor(240,240,250); doc.rect(margin,y,W-margin*2,8,'F');
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(80,40,120);
+    doc.text('Imaging Findings', margin+3, y+5.5);
+    y += 12;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+    (r.observations||[]).forEach(obs=>{ doc.text('• '+obs, margin+3, y); y+=6; });
+
+    y += 4;
+    doc.setFillColor(240,240,250); doc.rect(margin,y,W-margin*2,8,'F');
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(80,40,120);
+    doc.text('Treatment & Prognosis', margin+3, y+5.5);
+    y += 12;
+    const info = (window.TUMOR_INFO||{})[r.type];
+    if (info && info.en) {
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+      doc.text('Treatment: '+info.en.treatment, margin+3, y, {maxWidth: W-margin*2-6}); y+=10;
+      doc.text('Prognosis: '+info.en.prognosis, margin+3, y, {maxWidth: W-margin*2-6}); y+=10;
+    }
+
+    // Footer
+    doc.setFontSize(7); doc.setTextColor(150,150,150);
+    doc.text('⚠ For educational and research reference only. Not for clinical diagnosis.', W/2, 285, {align:'center'});
+
+    doc.save(`BrainScan_Report_${Date.now()}.pdf`);
+    showToast('PDF已下载', 'success');
+  } catch(e) {
+    showToast('PDF生成失败: '+e.message, 'error');
+  }
+}
+
+// ── Pixel Value Tooltip ──
+function setupPixelTooltip() {
+  const imgEl = document.getElementById('preview-img');
+  const tip = document.getElementById('pixel-tooltip');
+  if (!imgEl || !tip) return;
+  const off = document.createElement('canvas');
+  off.width = imgEl.naturalWidth || 256;
+  off.height = imgEl.naturalHeight || 256;
+  const ctx = off.getContext('2d');
+  ctx.drawImage(imgEl, 0, 0, off.width, off.height);
+  imgEl.addEventListener('mousemove', e => {
+    const rect = imgEl.getBoundingClientRect();
+    const px = Math.round((e.clientX-rect.left)/rect.width*off.width);
+    const py = Math.round((e.clientY-rect.top)/rect.height*off.height);
+    if (px<0||py<0||px>=off.width||py>=off.height) { tip.style.display='none'; return; }
+    const d = ctx.getImageData(px,py,1,1).data;
+    const gray = Math.round(0.299*d[0]+0.587*d[1]+0.114*d[2]);
+    const hu = Math.round(gray/255*2000-1000);
+    tip.style.display = 'block';
+    tip.style.left = (e.clientX+12)+'px';
+    tip.style.top = (e.clientY-28)+'px';
+    tip.innerHTML = `<span style="color:#a855f7">x${px},y${py}</span> &nbsp;|&nbsp; 灰度 <b>${gray}</b> &nbsp;|&nbsp; ~HU <b>${hu}</b>`;
+  });
+  imgEl.addEventListener('mouseleave', () => { tip.style.display='none'; });
 }
 
 // ── Sequence Simulation ──
