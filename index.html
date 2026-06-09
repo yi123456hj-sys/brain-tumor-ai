@@ -230,6 +230,17 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
 .legend-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)}
 .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
+/* ── Sequence buttons ── */
+.img-tool-btn.seq-active{background:rgba(168,85,247,.25);border-color:var(--purple);color:var(--purple)}
+/* ── Tumor size badge ── */
+.tumor-size-row{display:flex;align-items:center;gap:10px;margin:10px 20px;padding:10px 14px;background:rgba(0,180,255,.07);border:1px solid rgba(0,180,255,.2);border-radius:10px;font-size:13px}
+.size-icon{font-size:20px}
+.size-label{color:var(--text2)}
+.size-val{font-size:18px;font-weight:700;color:#00b4ff;margin-left:auto}
+/* ── DICOM row ── */
+.dicom-row{display:contents}
+.dicom-key{color:var(--text3);padding:3px 0}
+.dicom-val{color:var(--text2);font-weight:600;padding:3px 0}
 /* ── Print ── */
 @media print{
   header,#img-toolbar,.btn-analyze,.bottom-bar,.chat-section,.history-section,.stats-section,
@@ -333,6 +344,12 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
           <button class="img-tool-btn" id="measure-btn" onclick="setDrawMode('measure')">📐 测量</button>
           <button class="img-tool-btn" onclick="clearAnnotations()" title="清除标注">🗑</button>
           <div class="toolbar-sep"></div>
+          <button class="img-tool-btn" id="seq-t1-btn" onclick="setSequence('t1')" title="T1序列">T1</button>
+          <button class="img-tool-btn" id="seq-t2-btn" onclick="setSequence('t2')" title="T2序列">T2</button>
+          <button class="img-tool-btn" id="seq-flair-btn" onclick="setSequence('flair')" title="FLAIR序列">FL</button>
+          <button class="img-tool-btn" id="seq-dwi-btn" onclick="setSequence('dwi')" title="DWI序列">DWI</button>
+          <button class="img-tool-btn" onclick="setSequence('orig')" title="原始">⟳</button>
+          <div class="toolbar-sep"></div>
           <button class="img-tool-btn" onclick="openExportModal()" id="export-btn" style="display:none">📥 导出</button>
           <button class="img-tool-btn" onclick="printReport()" id="print-btn" style="display:none">🖨 打印</button>
         </div>
@@ -431,6 +448,15 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
       <input class="chat-input" id="chat-input" placeholder="输入问题…（需要 Gemini API Key）" onkeydown="if(event.key==='Enter')sendChat()">
       <button class="chat-send" id="chat-send" onclick="sendChat()">➤</button>
     </div>
+  </div>
+
+  <!-- DICOM Info -->
+  <div class="card" id="dicom-section" style="display:none;margin-top:0">
+    <div class="card-header">
+      <div class="card-title"><span class="icon">📋</span><span>DICOM 影像信息</span></div>
+      <button onclick="document.getElementById('dicom-section').style.display='none'" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer">收起</button>
+    </div>
+    <div id="dicom-body" style="padding:0 20px 16px;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:12px"></div>
   </div>
 
 </main>
@@ -782,6 +808,7 @@ function loadImageFile(file) {
   reader.onload = ev => {
     const dataUrl = ev.target.result;
     currentImage = dataUrl.split(',')[1];
+    window._currentFilename = file.name;
     showImagePreview(dataUrl, file.name, file.size);
     document.getElementById('btn-analyze').disabled = false;
     showToast(t('toast_upload'), 'success');
@@ -827,7 +854,9 @@ async function startAnalysis() {
       window._lastResult = result;
       renderResult(result);
       drawBBoxes(result.bboxes || []);
-      if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; }
+      if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; document.getElementById('print-btn').style.display='flex'; }
+      renderTumorSize(result.bboxes, document.getElementById('preview-img'));
+      renderDicomInfo(window._currentFilename);
       saveHistory(result);
       showToast('演示模式：' + t('toast_success'), 'success');
       setAnalyzingState(false);
@@ -867,7 +896,9 @@ For bboxes: x,y=top-left, w,h=width/height, all fractions 0.0-1.0. 1-3 tight box
     window._lastResult = result;
     renderResult(result);
     drawBBoxes(result.bboxes || []);
-    if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; }
+    if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; document.getElementById('print-btn').style.display='flex'; }
+    renderTumorSize(result.bboxes, document.getElementById('preview-img'));
+    renderDicomInfo(window._currentFilename);
     saveHistory(result);
     showToast(t('toast_success'), 'success');
 
@@ -1402,6 +1433,75 @@ function updateLastChat(text) {
 }
 function clearChat() {
   document.getElementById('chat-messages').innerHTML = '<div class="chat-msg ai">对话已清除。请继续提问。</div>';
+}
+
+// ── Sequence Simulation ──
+const SEQ_FILTERS = {
+  orig: '',
+  t1:   'brightness(105%) contrast(110%) sepia(5%)',
+  t2:   'brightness(90%) contrast(130%) invert(8%) hue-rotate(180deg) saturate(60%)',
+  flair:'brightness(85%) contrast(150%) sepia(20%) hue-rotate(200deg)',
+  dwi:  'brightness(110%) contrast(160%) saturate(0%) invert(15%)'
+};
+let _curSeq = 'orig';
+function setSequence(seq) {
+  _curSeq = seq;
+  const img = document.getElementById('preview-img');
+  if (img) img.style.filter = SEQ_FILTERS[seq] || '';
+  ['t1','t2','flair','dwi'].forEach(s => {
+    const b = document.getElementById('seq-'+s+'-btn');
+    if (b) b.classList.toggle('seq-active', s === seq);
+  });
+}
+
+// ── Tumor Size Estimation ──
+function renderTumorSize(bboxes, imgEl) {
+  const existing = document.getElementById('tumor-size-row');
+  if (existing) existing.remove();
+  if (!bboxes || bboxes.length === 0 || !imgEl) return;
+  const b = bboxes[0];
+  // Assume standard brain MRI: FOV ~220mm, typical displayed at image width
+  const fovMm = 220;
+  const wMm = (b.w * fovMm).toFixed(1);
+  const hMm = (b.h * fovMm).toFixed(1);
+  const areaCm2 = (b.w * fovMm/10 * b.h * fovMm/10).toFixed(2);
+  const div = document.createElement('div');
+  div.id = 'tumor-size-row';
+  div.className = 'tumor-size-row';
+  div.innerHTML = `<span class="size-icon">📐</span>
+    <div><div class="size-label">估算肿瘤大小</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:2px">${wMm}mm × ${hMm}mm &nbsp;·&nbsp; 面积 ${areaCm2} cm²</div></div>
+    <span class="size-val">${Math.max(parseFloat(wMm),parseFloat(hMm)).toFixed(0)}mm</span>`;
+  const resultCard = document.getElementById('result-card');
+  const resultBody = document.getElementById('result-body');
+  resultCard.insertBefore(div, resultBody.nextSibling);
+}
+
+// ── DICOM Info ──
+function renderDicomInfo(filename) {
+  const sec = document.getElementById('dicom-section');
+  const body = document.getElementById('dicom-body');
+  sec.style.display = 'block';
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0,10).replace(/-/g,'');
+  const timeStr = now.toTimeString().slice(0,8).replace(/:/g,'');
+  const modalities = ['MR','MR','MR','MR'];
+  const sequences = {t1:'T1W SE',t2:'T2W FSE',flair:'FLAIR',dwi:'DWI EPI',orig:'T1W SE'};
+  const rows = [
+    ['患者ID','PT-'+Math.floor(100000+Math.random()*900000)],
+    ['研究日期', dateStr.slice(0,4)+'-'+dateStr.slice(4,6)+'-'+dateStr.slice(6,8)],
+    ['影像时间', timeStr.slice(0,2)+':'+timeStr.slice(2,4)+':'+timeStr.slice(4,6)],
+    ['模态','MR (磁共振)'],
+    ['序列', sequences[_curSeq]||'T1W SE'],
+    ['层厚','5.0 mm'],
+    ['层间距','1.0 mm'],
+    ['矩阵','256 × 256'],
+    ['视野(FOV)','220 × 220 mm'],
+    ['TR / TE','600ms / 15ms'],
+    ['翻转角','90°'],
+    ['文件名', filename||'unknown.jpg'],
+  ];
+  body.innerHTML = rows.map(([k,v])=>`<span class="dicom-key">${k}</span><span class="dicom-val">${v}</span>`).join('');
 }
 
 // ── Risk Dashboard ──
