@@ -318,17 +318,18 @@ function analyzeImageForRegions(imgEl) {
     for (let x=0;x<W;x++)
       if (score[y*W+x]>maxScore){maxScore=score[y*W+x];peakX=x;peakY=y;}
 
-  // Flood-fill from peak down to zscore > 0.8
-  const thresh = Math.max(mean + std*0.8, mean*1.1);
+  // Use peak value itself as anchor — tight fill at 85% of peak
+  const peakVal = blurred[peakY*W+peakX];
+  const thresh = peakVal * 0.85;
   const visited = new Uint8Array(W*H);
   const queue = [[peakX,peakY]];
   visited[peakY*W+peakX]=1;
   let minX=peakX,maxX=peakX,minY=peakY,maxY=peakY,filled=0;
-  while(queue.length&&filled<1500){
+  while(queue.length&&filled<400){
     const[qx,qy]=queue.shift(); filled++;
     if(qx<minX)minX=qx;if(qx>maxX)maxX=qx;
     if(qy<minY)minY=qy;if(qy>maxY)maxY=qy;
-    for(const[dx,dy]of[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,1],[-1,1],[1,-1]]){
+    for(const[dx,dy]of[[-1,0],[1,0],[0,-1],[0,1]]){
       const nx=qx+dx,ny=qy+dy;
       if(nx>=0&&nx<W&&ny>=0&&ny<H&&inBrain(nx,ny)&&!visited[ny*W+nx]&&blurred[ny*W+nx]>=thresh){
         visited[ny*W+nx]=1;queue.push([nx,ny]);
@@ -336,9 +337,12 @@ function analyzeImageForRegions(imgEl) {
     }
   }
 
+  // Add small fixed padding around the tight cluster
+  const pad = Math.floor(W * 0.04);
   return {
     cx:(minX+maxX)/2/W, cy:(minY+maxY)/2/H,
-    rw:Math.max((maxX-minX)/W,0.07), rh:Math.max((maxY-minY)/H,0.07)
+    rw:Math.max((maxX-minX+pad*2)/W, 0.06),
+    rh:Math.max((maxY-minY+pad*2)/H, 0.06)
   };
 }
 
