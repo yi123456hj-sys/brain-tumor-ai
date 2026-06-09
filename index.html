@@ -699,8 +699,18 @@ const TUMOR_INFO = {
 let currentLang = 'zh';
 let currentImage = null;
 let currentMime = 'image/jpeg';
-let history = JSON.parse(localStorage.getItem('bsai-brain-history') || '[]');
+let scanHistory = [];
+try { scanHistory = JSON.parse(localStorage.getItem('bsai-brain-history') || '[]'); } catch(e) { scanHistory = []; }
+let history = scanHistory;
 let toastTimer = null;
+
+window.onerror = function(msg, src, line) {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;bottom:20px;left:20px;right:20px;background:#ff4d6d;color:#fff;padding:12px 16px;border-radius:10px;font-size:13px;z-index:9999;word-break:break-all';
+  d.textContent = 'JS Error: ' + msg + ' (line ' + line + ')';
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 10000);
+};
 
 window.addEventListener('DOMContentLoaded', () => {
   setupDragDrop();
