@@ -363,6 +363,7 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
           <div class="toolbar-sep"></div>
           <button class="img-tool-btn" onclick="openExportModal()" id="export-btn" style="display:none">📥 导出</button>
           <button class="img-tool-btn" onclick="exportPDF()" id="pdf-btn" style="display:none">📄 PDF</button>
+          <button class="img-tool-btn" onclick="generateMedicalReport()" id="medical-btn" style="display:none">🏥 医疗报告</button>
           <button class="img-tool-btn" onclick="printReport()" id="print-btn" style="display:none">🖨 打印</button>
         </div>
         <div class="enhance-panel" id="enhance-panel">
@@ -872,7 +873,7 @@ async function startAnalysis() {
       window._lastResult = result;
       renderResult(result);
       drawBBoxes(result.bboxes || []);
-      if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; document.getElementById('pdf-btn').style.display='flex'; document.getElementById('print-btn').style.display='flex'; }
+      if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; document.getElementById('pdf-btn').style.display='flex'; document.getElementById('medical-btn').style.display='flex'; document.getElementById('print-btn').style.display='flex'; }
       renderTumorSize(result.bboxes, document.getElementById('preview-img'));
       renderDicomInfo(window._currentFilename);
       saveHistory(result);
@@ -914,7 +915,7 @@ For bboxes: x,y=top-left, w,h=width/height, all fractions 0.0-1.0. 1-3 tight box
     window._lastResult = result;
     renderResult(result);
     drawBBoxes(result.bboxes || []);
-    if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; document.getElementById('pdf-btn').style.display='flex'; document.getElementById('print-btn').style.display='flex'; }
+    if (result.detected) { drawHeatmap(); document.getElementById('export-btn').style.display='flex'; document.getElementById('pdf-btn').style.display='flex'; document.getElementById('medical-btn').style.display='flex'; document.getElementById('print-btn').style.display='flex'; }
     renderTumorSize(result.bboxes, document.getElementById('preview-img'));
     renderDicomInfo(window._currentFilename);
     saveHistory(result);
@@ -1395,6 +1396,238 @@ function renderStatsChart() {
 
 // ── Print ──
 function printReport() { window.print(); }
+
+function generateMedicalReport() {
+  const r = window._lastResult;
+  if (!r) { showToast('请先完成分析', 'error'); return; }
+  const info = (TUMOR_INFO[r.type] || TUMOR_INFO.unclear);
+  const zh = info.zh || info.en;
+  const reportId = 'RPT-' + Date.now().toString(36).toUpperCase();
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
+  const timeStr = now.toLocaleTimeString('zh-CN');
+  const riskMap = {notumor:'低',pituitary:'中',meningioma:'中高',glioma:'高'};
+  const urgMap = {notumor:'定期随访（6个月）',pituitary:'近期就诊（1个月内）',meningioma:'尽快就诊（2周内）',glioma:'立即就医（1周内）'};
+  const followMap = {
+    notumor:['6个月后复查MRI','记录任何新发神经系统症状','保持健康生活方式'],
+    pituitary:['1个月内至神经外科门诊就诊','检测垂体激素水平（GH、ACTH、TSH、FSH/LH、PRL）','视力及视野检查','3个月后增强MRI复查'],
+    meningioma:['2周内至神经外科就诊','完善增强MRI及MRS检查','神经系统功能评估','手术或立体定向放射外科术前评估'],
+    glioma:['1周内神经外科急会诊','立即行增强MRI+灌注成像+波谱分析','多学科会诊（MDT）','术前神经功能基线评估','分子标志物检测（IDH/MGMT/1p19q）']
+  };
+  const rehabMap = {
+    notumor: {
+      phase1:'观察期（0-6个月）',p1:['定期影像学随访','记录头痛、视觉变化等症状','避免过度劳累'],
+      phase2:'维持期（6个月以上）',p2:['每年MRI复查','保持均衡饮食和规律运动','心理健康评估']
+    },
+    pituitary: {
+      phase1:'治疗期（0-3个月）',p1:['激素替代治疗','每周内分泌科随访','视力康复训练（如有受损）','避免剧烈运动'],
+      phase2:'康复期（3-12个月）',p2:['逐步恢复日常活动','认知功能训练','营养支持与睡眠管理','心理辅导与社会支持']
+    },
+    meningioma:{
+      phase1:'术后急性期（0-4周）',p1:['卧床休息，头部抬高30°','神经系统体征监测','防止深静脉血栓','疼痛管理'],
+      phase2:'功能康复期（1-6个月）',p2:['物理治疗：肌力与平衡训练','言语康复（如有语言障碍）','认知康复训练','逐步恢复工作与社会功能']
+    },
+    glioma:{
+      phase1:'综合治疗期（0-6个月）',p1:['同步放化疗期间休养','每周神经肿瘤科随访','抗癫痫药物管理','营养支持（高蛋白饮食）','颅内压监测'],
+      phase2:'维持化疗期（6-24个月）',p2:['替莫唑胺维持化疗随访','神经认知功能康复','心理社会支持（家属参与）','职业康复评估','定期影像学评效']
+    }
+  };
+  const rehab = rehabMap[r.type] || rehabMap.notumor;
+  const follow = followMap[r.type] || followMap.notumor;
+  const sevZh = {none:'无',mild:'轻度',moderate:'中度',severe:'重度'}[r.severity]||r.severity;
+
+  const imgSrc = currentImage ? `data:${currentMime};base64,${currentImage}` : '';
+
+  const html = `<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8"><title>医学影像分析报告 ${reportId}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'SimSun',serif;font-size:13px;color:#1a1a1a;background:#fff;padding:20px 30px}
+.page{max-width:800px;margin:0 auto}
+/* Header */
+.report-header{border-bottom:3px double #1a4a8a;padding-bottom:12px;margin-bottom:16px;display:flex;align-items:center;gap:16px}
+.hospital-logo{width:56px;height:56px;background:linear-gradient(135deg,#1a4a8a,#2563eb);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;flex-shrink:0}
+.hospital-name{font-size:20px;font-weight:bold;color:#1a4a8a;letter-spacing:2px}
+.hospital-sub{font-size:11px;color:#666;margin-top:3px}
+.report-title{text-align:center;font-size:18px;font-weight:bold;letter-spacing:6px;color:#1a4a8a;margin:14px 0 10px;border:1px solid #1a4a8a;padding:6px}
+/* Meta */
+.meta-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 20px;border:1px solid #999;padding:10px 14px;margin-bottom:14px;font-size:12px}
+.meta-row{display:flex;gap:4px;align-items:baseline}
+.meta-key{color:#555;white-space:nowrap;min-width:60px}
+.meta-val{font-weight:bold;color:#1a1a1a;border-bottom:1px solid #999;flex:1;padding-bottom:1px}
+/* Section */
+.section{margin-bottom:14px}
+.section-title{background:#1a4a8a;color:#fff;padding:4px 10px;font-size:13px;font-weight:bold;letter-spacing:2px;margin-bottom:8px}
+.section-body{padding:0 10px;line-height:1.9}
+/* Image + result row */
+.img-result-row{display:flex;gap:16px;margin-bottom:14px}
+.img-box{width:180px;height:180px;border:1px solid #999;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.img-box img{width:100%;height:100%;object-fit:contain}
+.result-box{flex:1;border:1px solid #999;padding:10px 14px}
+.result-item{display:flex;gap:6px;margin-bottom:6px;font-size:12px}
+.result-label{color:#555;min-width:70px}
+.result-value{font-weight:bold}
+.detected-badge{display:inline-block;padding:3px 14px;border-radius:3px;font-size:13px;font-weight:bold;margin-bottom:8px}
+.badge-tumor{background:#fff0f0;color:#cc0000;border:1px solid #cc0000}
+.badge-normal{background:#f0fff0;color:#006600;border:1px solid #006600}
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0}
+th{background:#e8eef8;color:#1a4a8a;border:1px solid #aaa;padding:5px 8px;text-align:center}
+td{border:1px solid #ccc;padding:4px 8px;vertical-align:top}
+td:first-child{color:#555;min-width:80px;text-align:center;background:#f8f8f8}
+/* Rehab phases */
+.phase{margin-bottom:10px}
+.phase-title{font-weight:bold;color:#1a4a8a;border-left:3px solid #1a4a8a;padding-left:8px;margin-bottom:4px}
+.phase-list{padding-left:20px}
+.phase-list li{margin-bottom:3px}
+/* Conclusion */
+.conclusion-box{border:2px solid #1a4a8a;padding:12px 16px;margin:14px 0;background:#f5f8ff}
+.conclusion-title{font-weight:bold;font-size:14px;color:#1a4a8a;margin-bottom:8px}
+/* Signature */
+.sig-row{display:flex;gap:30px;margin-top:20px;padding-top:12px;border-top:1px solid #999}
+.sig-item{flex:1;text-align:center}
+.sig-line{border-bottom:1px solid #333;margin:28px 10px 4px;height:1px}
+.sig-label{font-size:11px;color:#555}
+/* Footer */
+.report-footer{margin-top:20px;padding-top:8px;border-top:1px solid #999;font-size:10px;color:#888;text-align:center}
+.warn-box{background:#fffbe6;border:1px solid #e6a700;padding:6px 10px;font-size:11px;color:#7a5700;margin:8px 0}
+@media print{body{padding:10px 15px}button{display:none!important}}
+</style></head><body>
+<div class="page">
+<!-- Header -->
+<div class="report-header">
+  <div class="hospital-logo">🧠</div>
+  <div>
+    <div class="hospital-name">BrainScan AI 智能影像中心</div>
+    <div class="hospital-sub">Brain Tumor Intelligent Analysis System &nbsp;|&nbsp; 脑肿瘤AI辅助诊断报告</div>
+  </div>
+  <div style="margin-left:auto;text-align:right;font-size:11px;color:#666">
+    <div>报告编号：${reportId}</div>
+    <div>报告日期：${dateStr}</div>
+    <div>报告时间：${timeStr}</div>
+  </div>
+</div>
+
+<div class="report-title">影像学检查分析报告</div>
+
+<!-- Meta -->
+<div class="meta-grid">
+  <div class="meta-row"><span class="meta-key">患者姓名：</span><span class="meta-val">___________</span></div>
+  <div class="meta-row"><span class="meta-key">性&emsp;&emsp;别：</span><span class="meta-val">___________</span></div>
+  <div class="meta-row"><span class="meta-key">年&emsp;&emsp;龄：</span><span class="meta-val">___________</span></div>
+  <div class="meta-row"><span class="meta-key">检查项目：</span><span class="meta-val">脑部MRI平扫+增强</span></div>
+  <div class="meta-row"><span class="meta-key">检查设备：</span><span class="meta-val">AI辅助分析系统</span></div>
+  <div class="meta-row"><span class="meta-key">图像质量：</span><span class="meta-val">${{poor:'差',fair:'一般',good:'良好',excellent:'优秀'}[r.quality]||'良好'}</span></div>
+</div>
+
+<!-- Image + Result -->
+<div class="img-result-row">
+  <div class="img-box">${imgSrc?`<img src="${imgSrc}" alt="MRI">`:'<span style="color:#999;font-size:12px">影像图像</span>'}</div>
+  <div class="result-box">
+    <div class="detected-badge ${r.detected?'badge-tumor':'badge-normal'}">${r.detected?'▲ 检测到异常病灶':'✓ 未检测到明显肿瘤'}</div>
+    <div class="result-item"><span class="result-label">AI诊断分类：</span><span class="result-value" style="color:${r.detected?'#cc0000':'#006600'}">${zh.name}（${zh.sub}）</span></div>
+    <div class="result-item"><span class="result-label">AI置信度：</span><span class="result-value">${r.confidence}%</span></div>
+    <div class="result-item"><span class="result-label">病变部位：</span><span class="result-value">${r.location_zh||r.location}</span></div>
+    <div class="result-item"><span class="result-label">严重程度：</span><span class="result-value">${sevZh}</span></div>
+    <div class="result-item"><span class="result-label">建议就诊：</span><span class="result-value" style="color:#cc6600">${urgMap[r.type]}</span></div>
+    <div class="result-item"><span class="result-label">风险等级：</span><span class="result-value">${riskMap[r.type]||'中'}</span></div>
+  </div>
+</div>
+
+<!-- Imaging Findings -->
+<div class="section">
+  <div class="section-title">一、影像学所见</div>
+  <div class="section-body">
+    <p style="margin-bottom:6px">本次MRI影像经AI系统分析，主要发现如下：</p>
+    <ul style="padding-left:20px">${(r.observations_zh||r.observations||[]).map(o=>`<li>${o}</li>`).join('')}</ul>
+    ${r.detected?`<p style="margin-top:8px;color:#cc0000;font-weight:bold">▲ 在${r.location_zh||r.location}区域检测到异常信号，提示存在占位性病变，需进一步专科评估。</p>`:'<p style="margin-top:8px;color:#006600">本次影像学检查未发现明显占位性病变，脑实质信号均匀，中线结构居中。</p>'}
+  </div>
+</div>
+
+<!-- Diagnosis -->
+<div class="section">
+  <div class="section-title">二、AI辅助诊断意见</div>
+  <div class="section-body">
+    <table>
+      <tr><th>诊断项目</th><th>结果</th><th>说明</th></tr>
+      <tr><td>肿瘤类型</td><td><b>${zh.name}</b></td><td>${zh.cause}</td></tr>
+      <tr><td>发病机制</td><td colspan="2">${zh.cause}</td></tr>
+      <tr><td>病情等级</td><td><b>${sevZh}</b></td><td>${r.detected?'需专科医师评估确认':'暂未发现异常'}</td></tr>
+      <tr><td>影像质量</td><td>${{poor:'差',fair:'一般',good:'良好',excellent:'优秀'}[r.quality]||'良好'}</td><td>影像质量${r.quality==='poor'?'较差，建议重新检查':'良好，适合AI分析'}</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- Treatment -->
+<div class="section">
+  <div class="section-title">三、建议治疗方案</div>
+  <div class="section-body">
+    <table>
+      <tr><th>治疗阶段</th><th>治疗内容</th></tr>
+      <tr><td>推荐方案</td><td>${zh.treatment}</td></tr>
+      <tr><td>紧急程度</td><td><b style="color:#cc6600">${urgMap[r.type]}</b></td></tr>
+      <tr><td>随访计划</td><td><ul style="padding-left:16px;margin:0">${follow.map(f=>`<li>${f}</li>`).join('')}</ul></td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- Rehabilitation -->
+<div class="section">
+  <div class="section-title">四、康复计划</div>
+  <div class="section-body">
+    <div class="phase">
+      <div class="phase-title">${rehab.phase1}</div>
+      <ul class="phase-list">${rehab.p1.map(p=>`<li>${p}</li>`).join('')}</ul>
+    </div>
+    <div class="phase">
+      <div class="phase-title">${rehab.phase2}</div>
+      <ul class="phase-list">${rehab.p2.map(p=>`<li>${p}</li>`).join('')}</ul>
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:#555">
+      <b>生活建议：</b>保持规律作息，均衡饮食（增加Omega-3、抗氧化食物摄入），适度有氧运动，保持良好心理状态，避免精神压力过大。
+    </div>
+  </div>
+</div>
+
+<!-- Prognosis -->
+<div class="section">
+  <div class="section-title">五、预后说明</div>
+  <div class="section-body">
+    <p>${zh.prognosis}</p>
+    <div class="warn-box" style="margin-top:8px">⚠ 预后情况因个体差异、治疗时机、分子标志物等因素而存在显著差异，以上预后信息仅供参考，请以主治医师评估为准。</div>
+  </div>
+</div>
+
+<!-- Conclusion -->
+<div class="conclusion-box">
+  <div class="conclusion-title">综合诊断结论</div>
+  <p>经AI影像分析系统综合评估，本次脑部MRI影像<b>${r.detected?`在${r.location_zh||r.location}发现疑似${zh.name}（${zh.sub}）病灶，置信度${r.confidence}%，严重程度${sevZh}，建议${urgMap[r.type]}`:'未见明显占位性病变，建议定期随访复查'}</b>。</p>
+  <p style="margin-top:6px;color:#cc0000;font-size:12px">★ 本报告为AI辅助分析结果，须由具有执照的神经放射科医师审核确认后方可作为临床参考依据。</p>
+</div>
+
+<!-- Signature -->
+<div class="sig-row">
+  <div class="sig-item"><div class="sig-line"></div><div class="sig-label">AI分析系统</div><div class="sig-label">BrainScan AI v2.0</div></div>
+  <div class="sig-item"><div class="sig-line"></div><div class="sig-label">审核医师（签名）</div></div>
+  <div class="sig-item"><div class="sig-line"></div><div class="sig-label">报告日期：${dateStr}</div></div>
+</div>
+
+<!-- Footer -->
+<div class="report-footer">
+  报告编号：${reportId} &nbsp;|&nbsp; 本报告由 BrainScan AI 智能影像分析系统生成 &nbsp;|&nbsp; 仅供临床参考，不作为最终诊断依据<br>
+  如有疑问请联系神经外科或神经放射科专业医师
+</div>
+
+<div style="margin-top:16px;text-align:center">
+  <button onclick="window.print()" style="padding:8px 24px;background:#1a4a8a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px">🖨 打印 / 保存为PDF</button>
+  <button onclick="window.close()" style="padding:8px 24px;background:#888;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;margin-left:10px">关闭</button>
+</div>
+</div></body></html>`;
+
+  const w = window.open('', '_blank', 'width=900,height=900');
+  w.document.write(html);
+  w.document.close();
+}
 
 // ── AI Chat ──
 const CHAT_HISTORY = [];
