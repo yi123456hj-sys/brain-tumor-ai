@@ -1321,7 +1321,7 @@ async function sendChat() {
     if (!GEMINI_KEY) {
       await new Promise(res=>setTimeout(res,1200));
       const demoAnswers = [
-        `根据当前分析，${r?'该'+（TUMOR_INFO[r.type]||TUMOR_INFO.unclear)[currentLang||'zh'].name:'影像'}显示需要进一步评估。建议咨询专业神经外科医生。`,
+        `根据当前分析，${r?'该'+(TUMOR_INFO[r.type]||TUMOR_INFO.unclear)[currentLang||'zh'].name:'影像'}显示需要进一步评估。建议咨询专业神经外科医生。`,
         '从影像特征来看，建议进行增强MRI复查以获取更准确的诊断信息。',
         '注意：本系统处于演示模式，AI问答需要有效的 Gemini API Key 才能提供真实分析。'
       ];
