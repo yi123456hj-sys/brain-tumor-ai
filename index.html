@@ -718,7 +718,6 @@ function t(key) { return LANGS[currentLang][key] || LANGS.en[key] || key; }
 
 function setupDragDrop() {
   const zone = document.getElementById('upload-zone');
-  zone.addEventListener('click', () => document.getElementById('file-input').click());
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
   zone.addEventListener('drop', e => {
