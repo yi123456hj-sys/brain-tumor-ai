@@ -346,11 +346,14 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
           <div class="enhance-row"><span class="enhance-label">窗位WL</span><input type="range" class="enhance-slider" id="sl-wl" min="0" max="255" value="128" oninput="applyWL()"></div>
         </div>
         <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFileSelect(event)">
-        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+        <div class="upload-zone" id="upload-zone">
           <span class="upload-icon">📡</span>
           <div class="upload-title" data-i18n="upload_drop">拖拽或点击上传</div>
           <div class="upload-sub" data-i18n="upload_sub">支持 JPG · PNG · WEBP · BMP</div>
           <div class="upload-hint" data-i18n="upload_hint">建议使用标准脑部MRI影像，分辨率越高分析越准确</div>
+          <label for="file-input" style="display:inline-block;margin-top:14px;padding:10px 28px;background:linear-gradient(135deg,#7c3aed,#4c1d95);color:#fff;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;pointer-events:all">
+            📂 选择图片文件
+          </label>
         </div>
         <button class="btn-analyze" id="btn-analyze" onclick="startAnalysis()" disabled>
           <span id="btn-icon">🔍</span>
@@ -748,7 +751,7 @@ function loadImageFile(file) {
 function showImagePreview(dataUrl, name, size) {
   const zone = document.getElementById('upload-zone');
   zone.classList.add('has-image');
-  zone.onclick = () => document.getElementById('file-input').click();
+  zone.onclick = null;
   zone.innerHTML = `
     <div class="img-zoom-wrap" id="img-zoom-wrap">
       <div class="img-wrap" id="img-wrap-inner">
