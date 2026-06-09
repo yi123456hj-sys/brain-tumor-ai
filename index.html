@@ -251,8 +251,43 @@ main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;
 </div>
 
 <script>
-const GEMINI_KEY = 'PASTE_KEY_HERE';
+const GEMINI_KEY = '';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+
+function getDemoResult() {
+  const types = ['glioma','meningioma','pituitary','notumor'];
+  const type = types[Math.floor(Math.random() * types.length)];
+  const detected = type !== 'notumor';
+  const conf = detected ? 78 + Math.floor(Math.random() * 18) : 85 + Math.floor(Math.random() * 12);
+  const sevMap = { glioma:'severe', meningioma:'moderate', pituitary:'mild', notumor:'none' };
+  const locMap = {
+    glioma:{en:'Right temporal lobe, extending to parietal region',zh:'右侧颞叶，延伸至顶叶区域'},
+    meningioma:{en:'Left frontal convexity, extra-axial mass',zh:'左侧额叶凸面，轴外占位性病变'},
+    pituitary:{en:'Sellar/suprasellar region, pituitary fossa',zh:'鞍区/鞍上区，垂体窝'},
+    notumor:{en:'No focal lesion identified',zh:'未发现局灶性病变'},
+  };
+  const obsMap = {
+    glioma:{en:['Irregular hypointense core with peripheral enhancement','Surrounding vasogenic edema in T2/FLAIR','Mass effect with midline shift ~4mm'],zh:['不规则低信号核心伴周边强化','T2/FLAIR序列周围血管源性水肿','占位效应伴中线移位约4mm']},
+    meningioma:{en:['Well-defined extra-axial homogeneous mass','Intense homogeneous contrast enhancement','Dural tail sign present'],zh:['边界清晰的轴外均匀性占位','均匀明显强化','可见脑膜尾征']},
+    pituitary:{en:['Sellar mass with suprasellar extension','Optic chiasm compression noted','Heterogeneous signal on T1 post-contrast'],zh:['鞍区占位伴鞍上区延伸','视交叉受压','T1增强后信号不均匀']},
+    notumor:{en:['No abnormal signal intensity detected','Normal cortical and subcortical structures','Ventricles and sulci appear normal for age'],zh:['未检测到异常信号强度','皮质和皮质下结构正常','脑室和脑沟与年龄相符']},
+  };
+  const bboxMap = {
+    glioma:[{label:'肿瘤区域',label_en:'Tumor Region',confidence:conf,color:'red',x:.38,y:.22,w:.28,h:.32},{label:'水肿区域',label_en:'Edema Zone',confidence:conf-8,color:'yellow',x:.30,y:.18,w:.42,h:.42}],
+    meningioma:[{label:'肿瘤区域',label_en:'Tumor Region',confidence:conf,color:'red',x:.20,y:.15,w:.25,h:.28},{label:'脑膜尾征',label_en:'Dural Tail',confidence:conf-6,color:'blue',x:.18,y:.12,w:.30,h:.10}],
+    pituitary:[{label:'垂体占位',label_en:'Pituitary Mass',confidence:conf,color:'red',x:.42,y:.52,w:.18,h:.20},{label:'鞍上延伸',label_en:'Suprasellar Ext.',confidence:conf-5,color:'yellow',x:.40,y:.42,w:.22,h:.14}],
+    notumor:[],
+  };
+  return {
+    detected, type, confidence: conf,
+    severity: sevMap[type],
+    location: locMap[type].en, location_zh: locMap[type].zh,
+    observations: obsMap[type].en, observations_zh: obsMap[type].zh,
+    quality: 'good',
+    bboxes: bboxMap[type],
+    _demo: true
+  };
+}
 
 // ── i18n ──
 const LANGS = {
@@ -423,6 +458,18 @@ async function startAnalysis() {
   showLoadingSkeleton();
 
   try {
+    if (!GEMINI_KEY) {
+      await new Promise(r => setTimeout(r, 2200));
+      const result = getDemoResult();
+      window._lastResult = result;
+      renderResult(result);
+      drawBBoxes(result.bboxes || []);
+      saveHistory(result);
+      showToast('演示模式：' + t('toast_success'), 'success');
+      setAnalyzingState(false);
+      return;
+    }
+
     const res = await fetch(GEMINI_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
