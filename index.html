@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BrainScan AI — 脑肿瘤智能分析系统</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050b18;--bg2:#080f1f;--card:#0d1829;--card2:#111e30;
+  --border:rgba(100,180,255,.15);--border2:rgba(100,180,255,.08);
+  --blue:#00b4ff;--blue2:#0070cc;--teal:#00e5cc;--green:#00d97e;
+  --yellow:#ffd60a;--red:#ff4d6d;--orange:#ff9500;--purple:#a855f7;
+  --text:#e8f0fe;--text2:#94a3b8;--text3:#4a5568;
+  --glow:0 0 24px rgba(100,100,255,.25);--radius:16px;--radius2:12px
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter','Noto Sans SC','Noto Sans KR',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(100,100,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(100,100,255,.03) 1px,transparent 1px);
+  background-size:40px 40px;z-index:0}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#0a0f1e}
+::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:3px}
+.app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
+
+/* Header */
+header{background:rgba(5,11,24,.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);
+  padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,#1a0d4e,#2d0a6e);
+  border:1px solid rgba(168,85,247,.4);display:flex;align-items:center;justify-content:center;
+  font-size:18px;box-shadow:0 0 12px rgba(168,85,247,.3)}
+.logo-text{font-size:18px;font-weight:700;color:#fff;letter-spacing:-.3px}
+.logo-sub{font-size:11px;color:var(--purple);font-weight:500;letter-spacing:.5px;text-transform:uppercase}
+.lang-btn{display:flex;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.lang-btn button{padding:6px 12px;background:none;border:none;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s}
+.lang-btn button.active{background:var(--blue2);color:#fff}
+.lang-btn button:hover:not(.active){background:rgba(168,85,247,.1);color:var(--purple)}
+
+/* Main */
+main{flex:1;padding:24px;max-width:1400px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:24px}
+.workspace{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+.card-title .icon{font-size:16px}
+.card-body{padding:20px}
+
+/* Upload */
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius2);padding:40px 20px;text-align:center;
+  cursor:pointer;transition:all .3s;position:relative;overflow:hidden;background:rgba(0,0,0,.2)}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--purple);background:rgba(168,85,247,.05);box-shadow:0 0 24px rgba(168,85,247,.2)}
+.upload-zone.has-image{padding:0;border-style:solid;border-color:rgba(168,85,247,.3)}
+.upload-icon{font-size:48px;margin-bottom:12px;display:block}
+.upload-title{font-size:16px;font-weight:600;margin-bottom:6px}
+.upload-sub{font-size:13px;color:var(--text2)}
+.upload-hint{font-size:11px;color:var(--text3);margin-top:8px}
+#file-input{display:none}
+
+/* Image */
+.img-wrap{position:relative;width:100%}
+.img-wrap img{display:block;width:100%;max-height:480px;object-fit:contain;border-radius:calc(var(--radius2) - 2px)}
+.img-overlay{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:flex-start;padding:12px}
+.img-badge{background:rgba(0,0,0,.7);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:11px;color:var(--text2)}
+.canvas-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;border-radius:calc(var(--radius2) - 2px)}
+
+/* Button */
+.btn-analyze{width:100%;margin-top:16px;padding:14px;
+  background:linear-gradient(135deg,#6d28d9,#4c1d95);
+  border:1px solid rgba(168,85,247,.4);border-radius:var(--radius2);
+  color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:all .3s;
+  position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-analyze:hover:not(:disabled){box-shadow:0 4px 20px rgba(109,40,217,.5);transform:translateY(-1px)}
+.btn-analyze:disabled{opacity:.5;cursor:not-allowed}
+.btn-analyze.loading{pointer-events:none}
+.scan-line{position:absolute;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--purple),transparent);
+  animation:scanDown 1.5s ease-in-out infinite;box-shadow:0 0 12px var(--purple)}
+@keyframes scanDown{0%{top:-2px}100%{top:calc(100% + 2px)}}
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* Results */
+.result-empty{text-align:center;padding:48px 20px;color:var(--text3);display:flex;flex-direction:column;align-items:center;gap:12px}
+.result-empty .big-icon{font-size:56px;opacity:.4}
+.result-status{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border2)}
+.status-badge{display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700}
+.status-badge.tumor{background:rgba(255,77,109,.15);border:1px solid rgba(255,77,109,.4);color:var(--red)}
+.status-badge.normal{background:rgba(0,217,126,.15);border:1px solid rgba(0,217,126,.4);color:var(--green)}
+
+/* Tumor type card */
+.tumor-type-card{margin:16px 20px;padding:16px;
+  background:linear-gradient(135deg,rgba(109,40,217,.15),rgba(76,29,149,.1));
+  border:1px solid rgba(168,85,247,.2);border-radius:var(--radius2)}
+.tumor-type-name{font-size:22px;font-weight:800;color:#fff;margin-bottom:4px}
+.tumor-type-sub{font-size:13px;color:var(--purple)}
+
+/* Metrics */
+.metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:0 20px 16px}
+.metric-card{background:var(--card2);border:1px solid var(--border2);border-radius:var(--radius2);padding:12px;text-align:center}
+.metric-label{font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.metric-val{font-size:20px;font-weight:800}
+.metric-val.conf{color:var(--blue)}
+.metric-val.sev-none{color:var(--green)}
+.metric-val.sev-mild{color:var(--yellow)}
+.metric-val.sev-moderate{color:var(--orange)}
+.metric-val.sev-severe{color:var(--red)}
+.metric-val.qual-poor{color:var(--red)}
+.metric-val.qual-fair{color:var(--yellow)}
+.metric-val.qual-good{color:var(--blue)}
+.metric-val.qual-excellent{color:var(--green)}
+
+/* Conf bar */
+.conf-bar-wrap{padding:0 20px 16px}
+.conf-bar-label{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px}
+.conf-bar-bg{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.conf-bar-fill{height:100%;border-radius:3px;transition:width 1s cubic-bezier(.4,0,.2,1)}
+
+/* Location */
+.location-row{display:flex;gap:10px;padding:0 20px 16px;align-items:flex-start}
+.loc-icon{font-size:18px;flex-shrink:0;margin-top:2px}
+
+/* Observations */
+.obs-section{margin:0 20px 16px;padding:14px;background:rgba(168,85,247,.05);border:1px solid rgba(168,85,247,.1);border-radius:var(--radius2)}
+.obs-title{font-size:12px;font-weight:600;color:var(--purple);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+.obs-item{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;line-height:1.5}
+.obs-dot{width:6px;height:6px;border-radius:50%;background:var(--purple);flex-shrink:0;margin-top:5px}
+
+/* Info */
+.info-section{margin:0 20px 16px}
+.info-grid{display:grid;grid-template-columns:1fr;gap:10px}
+.info-item-title{font-size:11px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.info-item-text{font-size:13px;color:var(--text2);line-height:1.6}
+
+/* Disclaimer */
+.disclaimer{margin:0 20px 16px;padding:10px 14px;background:rgba(255,215,10,.05);border:1px solid rgba(255,215,10,.2);border-radius:8px;font-size:11px;color:rgba(255,215,10,.7);display:flex;align-items:flex-start;gap:8px}
+
+/* Skeleton */
+.skeleton{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);background-size:400% 100%;animation:shimmer 1.5s infinite;border-radius:6px}
+@keyframes shimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}
+
+/* History */
+.history-section{margin-top:24px}
+.history-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;padding:16px 20px}
+.history-item{background:var(--card2);border:1px solid var(--border2);border-radius:var(--radius2);overflow:hidden;cursor:pointer;transition:all .2s}
+.history-item:hover{border-color:var(--purple);transform:translateY(-2px);box-shadow:var(--glow)}
+.history-thumb{width:100%;height:100px;object-fit:cover}
+.history-info{padding:8px 10px}
+.history-type{font-size:12px;font-weight:700;color:var(--text)}
+.history-time{font-size:10px;color:var(--text3);margin-top:2px}
+.history-empty{padding:20px;text-align:center;color:var(--text3);font-size:13px}
+
+/* Bottom */
+.bottom-bar{background:rgba(5,11,24,.9);border-top:1px solid var(--border2);padding:12px 24px;text-align:center;font-size:11px;color:var(--text3)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--card2);border:1px solid var(--border);border-radius:12px;
+  padding:12px 20px;display:flex;align-items:center;gap:10px;font-size:13px;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);transition:transform .3s cubic-bezier(.4,0,.2,1);z-index:999}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.error .toast-icon{color:var(--red)}
+.toast.success .toast-icon{color:var(--green)}
+
+@media(max-width:640px){
+  header{padding:0 16px}
+  main{padding:16px}
+  .metrics-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🧠</div>
+    <div>
+      <div class="logo-text">BrainScan AI</div>
+      <div class="logo-sub" data-i18n="subtitle">脑肿瘤智能分析系统</div>
+    </div>
+  </div>
+  <div class="lang-btn">
+    <button onclick="setLang('zh')" id="lang-zh" class="active">中文</button>
+    <button onclick="setLang('en')" id="lang-en">EN</button>
+    <button onclick="setLang('ko')" id="lang-ko">한국어</button>
+  </div>
+</header>
+
+<main>
+  <div class="workspace">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">🩻</span><span data-i18n="upload_title">上传MRI影像</span></div>
+        <span id="img-size-badge" style="font-size:11px;color:var(--text3)"></span>
+      </div>
+      <div class="card-body">
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+          <span class="upload-icon">📡</span>
+          <div class="upload-title" data-i18n="upload_drop">拖拽或点击上传</div>
+          <div class="upload-sub" data-i18n="upload_sub">支持 JPG · PNG · WEBP · BMP</div>
+          <div class="upload-hint" data-i18n="upload_hint">建议使用标准脑部MRI影像，分辨率越高分析越准确</div>
+        </div>
+        <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
+        <button class="btn-analyze" id="btn-analyze" onclick="startAnalysis()" disabled>
+          <span id="btn-icon">🔍</span>
+          <span id="btn-text" data-i18n="btn_analyze">开始AI分析</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="card" id="result-card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">📊</span><span data-i18n="result_title">分析结果</span></div>
+        <div id="result-quality-badge" style="display:none;font-size:11px;padding:3px 8px;border-radius:6px;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2);color:var(--purple)"></div>
+      </div>
+      <div id="result-body">
+        <div class="result-empty" id="result-placeholder">
+          <div class="big-icon">🔬</div>
+          <div style="font-size:14px;font-weight:500;color:var(--text2)" data-i18n="result_placeholder">上传MRI影像后点击分析</div>
+          <div style="font-size:12px" data-i18n="result_placeholder_sub">AI将自动识别肿瘤类型、位置和特征</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card history-section" id="history-section" style="display:none">
+    <div class="card-header">
+      <div class="card-title"><span class="icon">🗂</span><span data-i18n="history_title">分析历史</span></div>
+      <button onclick="clearHistory()" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'" data-i18n="history_clear">清除历史</button>
+    </div>
+    <div class="history-grid" id="history-grid"></div>
+  </div>
+</main>
+
+<div class="bottom-bar">
+  <span data-i18n="disclaimer">⚠ 本系统仅供教育与研究参考，不作为临床诊断依据。请咨询专业医疗人员。</span>
+</div>
+
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toast-icon">ℹ</span>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+const GEMINI_KEY = 'PASTE_KEY_HERE';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+
+// ── i18n ──
+const LANGS = {
+  zh:{
+    subtitle:'脑肿瘤智能分析系统',
+    upload_title:'上传MRI影像',upload_drop:'拖拽或点击上传',
+    upload_sub:'支持 JPG · PNG · WEBP · BMP',
+    upload_hint:'建议使用标准脑部MRI影像，分辨率越高分析越准确',
+    btn_analyze:'开始AI分析',btn_analyzing:'正在分析中…',
+    result_title:'分析结果',result_placeholder:'上传MRI影像后点击分析',
+    result_placeholder_sub:'AI将自动识别肿瘤类型、位置和特征',
+    history_title:'分析历史',history_clear:'清除历史',
+    disclaimer:'⚠ 本系统仅供教育与研究参考，不作为临床诊断依据。请咨询专业医疗人员。',
+    detected:'检测到肿瘤',normal:'未检测到肿瘤',
+    conf:'置信度',severity:'严重程度',quality:'图像质量',
+    location_label:'肿瘤位置',observations_title:'影像发现',
+    cause_title:'常见原因',treatment_title:'治疗方案',recovery_title:'预后说明',
+    sev_none:'无',sev_mild:'轻度',sev_moderate:'中度',sev_severe:'重度',
+    qual_poor:'差',qual_fair:'一般',qual_good:'良好',qual_excellent:'优秀',
+    err_no_img:'请先上传MRI影像',err_parse:'分析响应解析失败，请重试',
+    err_api:'API调用失败',toast_success:'分析完成！',toast_upload:'影像已加载',
+  },
+  en:{
+    subtitle:'Brain Tumor Intelligence System',
+    upload_title:'Upload MRI Scan',upload_drop:'Drag & Drop or Click',
+    upload_sub:'Supports JPG · PNG · WEBP · BMP',
+    upload_hint:'Standard brain MRI images recommended for best results',
+    btn_analyze:'Start AI Analysis',btn_analyzing:'Analyzing…',
+    result_title:'Analysis Results',result_placeholder:'Upload an MRI scan then click Analyze',
+    result_placeholder_sub:'AI will identify tumor type, location and characteristics',
+    history_title:'History',history_clear:'Clear',
+    disclaimer:'⚠ For educational and research purposes only. Not a substitute for professional medical diagnosis.',
+    detected:'Tumor Detected',normal:'No Tumor Detected',
+    conf:'Confidence',severity:'Severity',quality:'Image Quality',
+    location_label:'Tumor Location',observations_title:'Observations',
+    cause_title:'Common Causes',treatment_title:'Treatment',recovery_title:'Prognosis',
+    sev_none:'None',sev_mild:'Mild',sev_moderate:'Moderate',sev_severe:'Severe',
+    qual_poor:'Poor',qual_fair:'Fair',qual_good:'Good',qual_excellent:'Excellent',
+    err_no_img:'Please upload an MRI image first',err_parse:'Failed to parse response, please retry',
+    err_api:'API call failed',toast_success:'Analysis complete!',toast_upload:'Image loaded',
+  },
+  ko:{
+    subtitle:'뇌종양 지능 분석 시스템',
+    upload_title:'MRI 스캔 업로드',upload_drop:'드래그 또는 클릭하여 업로드',
+    upload_sub:'JPG · PNG · WEBP · BMP 지원',
+    upload_hint:'표준 뇌 MRI 이미지를 권장합니다',
+    btn_analyze:'AI 분석 시작',btn_analyzing:'분석 중…',
+    result_title:'분석 결과',result_placeholder:'MRI 업로드 후 분석 클릭',
+    result_placeholder_sub:'AI가 종양 유형, 위치 및 특징을 자동 식별합니다',
+    history_title:'분석 기록',history_clear:'기록 삭제',
+    disclaimer:'⚠ 교육 및 연구 목적으로만 사용하십시오. 임상 진단을 대체하지 않습니다.',
+    detected:'종양 감지됨',normal:'종양 없음',
+    conf:'신뢰도',severity:'중증도',quality:'이미지 품질',
+    location_label:'종양 위치',observations_title:'관찰 소견',
+    cause_title:'주요 원인',treatment_title:'치료 방법',recovery_title:'예후',
+    sev_none:'없음',sev_mild:'경도',sev_moderate:'중등도',sev_severe:'중증',
+    qual_poor:'불량',qual_fair:'보통',qual_good:'양호',qual_excellent:'우수',
+    err_no_img:'먼저 MRI 이미지를 업로드해 주세요',err_parse:'응답 파싱 실패, 다시 시도하세요',
+    err_api:'API 호출 실패',toast_success:'분석 완료!',toast_upload:'이미지 로드됨',
+  }
+};
+
+const TUMOR_INFO = {
+  glioma:{
+    zh:{name:'胶质瘤',sub:'Glioma',cause:'起源于脑部胶质细胞，与基因突变和遗传因素相关',treatment:'手术切除 + 放疗 + 化疗（替莫唑胺），TMZ方案为主',prognosis:'依分级而定，低级别5年生存率约70%，高级别（GBM）约15%'},
+    en:{name:'Glioma',sub:'胶质瘤',cause:'Originates from glial cells; associated with genetic mutations',treatment:'Surgery + Radiation + Chemotherapy (Temozolomide)',prognosis:'Varies by grade; low-grade ~70% 5-year survival, GBM ~15%'},
+    ko:{name:'신경교종',sub:'Glioma',cause:'신경교세포에서 발생, 유전자 돌연변이와 관련',treatment:'수술 + 방사선 + 화학요법(테모졸로마이드)',prognosis:'등급에 따라 다름; 저등급 ~70%, 교모세포종 ~15% 5년 생존율'},
+  },
+  meningioma:{
+    zh:{name:'脑膜瘤',sub:'Meningioma',cause:'起源于脑膜，与辐射暴露和激素因素相关，女性多发',treatment:'观察随访（良性小瘤）或手术切除，放射外科（伽马刀）',prognosis:'良性居多，手术切除后复发率低，预后较好'},
+    en:{name:'Meningioma',sub:'脑膜瘤',cause:'Originates from meninges; linked to radiation exposure and hormones',treatment:'Watch-and-wait, surgery, or stereotactic radiosurgery (Gamma Knife)',prognosis:'Mostly benign; good prognosis after resection'},
+    ko:{name:'뇌수막종',sub:'Meningioma',cause:'뇌막에서 발생; 방사선 노출 및 호르몬과 관련',treatment:'경과 관찰, 수술 또는 정위 방사선수술(감마 나이프)',prognosis:'대부분 양성; 절제 후 예후 양호'},
+  },
+  pituitary:{
+    zh:{name:'垂体瘤',sub:'Pituitary Tumor',cause:'垂体细胞异常增殖，多为良性腺瘤，功能性或非功能性',treatment:'经鼻蝶手术（内镜）、放疗或药物治疗（多巴胺激动剂）',prognosis:'大多数良性，治疗效果良好，复发率约10-20%'},
+    en:{name:'Pituitary Tumor',sub:'垂体瘤',cause:'Abnormal pituitary cell growth; usually benign adenomas',treatment:'Transsphenoidal surgery, radiation, or dopamine agonists',prognosis:'Mostly benign with good outcomes; recurrence ~10-20%'},
+    ko:{name:'뇌하수체 종양',sub:'Pituitary Tumor',cause:'뇌하수체 세포의 비정상적 증식; 대부분 양성 선종',treatment:'경접형동 수술, 방사선 또는 도파민 작용제',prognosis:'대부분 양성으로 예후 양호; 재발률 약 10-20%'},
+  },
+  notumor:{
+    zh:{name:'正常（无肿瘤）',sub:'No Tumor',cause:'影像未发现肿瘤迹象',treatment:'无需肿瘤相关治疗，定期随访即可',prognosis:'良好，建议定期复查MRI'},
+    en:{name:'No Tumor Detected',sub:'正常',cause:'No tumor evidence found in imaging',treatment:'No tumor treatment required; regular follow-up',prognosis:'Good; routine MRI follow-up recommended'},
+    ko:{name:'종양 없음 (정상)',sub:'No Tumor',cause:'영상에서 종양 징후 없음',treatment:'종양 관련 치료 불필요; 정기 추적 관찰',prognosis:'양호; 정기 MRI 추적 검사 권장'},
+  },
+  unclear:{
+    zh:{name:'类型不明确',sub:'Unclear',cause:'图像质量或角度限制了准确判断',treatment:'建议进行增强MRI或多序列扫描',prognosis:'视最终诊断而定'},
+    en:{name:'Unclear / Inconclusive',sub:'不明确',cause:'Image quality or position limits accurate assessment',treatment:'Enhanced MRI or multi-sequence scan recommended',prognosis:'Depends on final diagnosis'},
+    ko:{name:'불명확한 유형',sub:'Unclear',cause:'이미지 품질로 인해 정확한 판단 어려움',treatment:'조영 MRI 또는 다중 시퀀스 스캔 권장',prognosis:'최종 진단에 따라 다름'},
+  }
+};
+
+let currentLang = 'zh';
+let currentImage = null;
+let currentMime = 'image/jpeg';
+let history = JSON.parse(localStorage.getItem('bsai-brain-history') || '[]');
+let toastTimer = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+  setupDragDrop();
+  renderHistory();
+});
+
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('.lang-btn button').forEach(b => b.classList.remove('active'));
+  document.getElementById('lang-' + lang).classList.add('active');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (LANGS[lang][key]) el.textContent = LANGS[lang][key];
+  });
+  if (window._lastResult) renderResult(window._lastResult);
+}
+function t(key) { return LANGS[currentLang][key] || LANGS.en[key] || key; }
+
+function setupDragDrop() {
+  const zone = document.getElementById('upload-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadImageFile(file);
+  });
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) loadImageFile(file);
+}
+
+function loadImageFile(file) {
+  currentMime = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const dataUrl = ev.target.result;
+    currentImage = dataUrl.split(',')[1];
+    showImagePreview(dataUrl, file.name, file.size);
+    document.getElementById('btn-analyze').disabled = false;
+    showToast(t('toast_upload'), 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function showImagePreview(dataUrl, name, size) {
+  const zone = document.getElementById('upload-zone');
+  zone.classList.add('has-image');
+  zone.onclick = null;
+  zone.innerHTML = `
+    <div class="img-wrap">
+      <img src="${dataUrl}" id="preview-img" alt="MRI preview">
+      <canvas class="canvas-overlay" id="result-canvas"></canvas>
+      <div class="img-overlay">
+        <div class="img-badge">📎 ${name}${size ? ' · ' + (size/1024).toFixed(1) + 'KB' : ''}</div>
+      </div>
+    </div>`;
+  zone.addEventListener('click', () => document.getElementById('file-input').click(), {once:true});
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadImageFile(file);
+  });
+}
+
+async function startAnalysis() {
+  if (!currentImage) { showToast(t('err_no_img'), 'error'); return; }
+  setAnalyzingState(true);
+  showLoadingSkeleton();
+
+  try {
+    const res = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: currentMime, data: currentImage } },
+            { text: `You are a professional neuroradiology AI. Carefully analyze this brain MRI image.
+Return ONLY valid JSON, no markdown, no explanation:
+{"detected":true_or_false,"type":"glioma|meningioma|pituitary|notumor|unclear","confidence":0-100,"severity":"none|mild|moderate|severe","location":"precise anatomical location in English","location_zh":"精确解剖位置（中文）","observations":["finding 1","finding 2","finding 3"],"observations_zh":["发现1","发现2","发现3"],"quality":"poor|fair|good|excellent","bboxes":[{"label":"肿瘤区域","label_en":"Tumor Region","confidence":0-100,"color":"red","x":0.0,"y":0.0,"w":0.1,"h":0.1},{"label":"异常信号","label_en":"Abnormal Signal","confidence":0-100,"color":"yellow","x":0.0,"y":0.0,"w":0.1,"h":0.1}]}
+For bboxes: x,y=top-left, w,h=width/height, all fractions 0.0-1.0. 1-3 tight boxes on tumor regions. Empty array if no tumor.` }
+          ]
+        }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
+      })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    let raw = data.candidates[0].content.parts[0].text
+      .replace(/^```json?\s*/,'').replace(/\s*```$/,'').trim();
+
+    let result;
+    try { result = JSON.parse(raw); }
+    catch { throw new Error(t('err_parse')); }
+
+    window._lastResult = result;
+    renderResult(result);
+    drawBBoxes(result.bboxes || []);
+    saveHistory(result);
+    showToast(t('toast_success'), 'success');
+
+  } catch (err) {
+    showResultError(err.message);
+    showToast(t('err_api') + ': ' + err.message, 'error');
+  } finally {
+    setAnalyzingState(false);
+  }
+}
+
+function setAnalyzingState(on) {
+  const btn = document.getElementById('btn-analyze');
+  const icon = document.getElementById('btn-icon');
+  const txt = document.getElementById('btn-text');
+  btn.disabled = on;
+  btn.classList.toggle('loading', on);
+  if (on) {
+    icon.outerHTML = '<div class="spinner" id="btn-icon"></div>';
+    txt.textContent = t('btn_analyzing');
+    const zone = document.getElementById('upload-zone');
+    if (!zone.querySelector('.scan-line')) {
+      const line = document.createElement('div');
+      line.className = 'scan-line'; zone.appendChild(line);
+    }
+  } else {
+    const spinEl = document.getElementById('btn-icon');
+    if (spinEl && spinEl.classList.contains('spinner'))
+      spinEl.outerHTML = '<span id="btn-icon">🔍</span>';
+    txt.textContent = t('btn_analyze');
+    const line = document.getElementById('upload-zone').querySelector('.scan-line');
+    if (line) line.remove();
+  }
+}
+
+function showLoadingSkeleton() {
+  document.getElementById('result-body').innerHTML = `
+    <div style="padding:20px;display:flex;flex-direction:column;gap:12px">
+      <div class="skeleton" style="height:40px;width:60%"></div>
+      <div class="skeleton" style="height:24px;width:40%"></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        <div class="skeleton" style="height:80px"></div>
+        <div class="skeleton" style="height:80px"></div>
+        <div class="skeleton" style="height:80px"></div>
+      </div>
+      <div class="skeleton" style="height:16px;width:100%"></div>
+      <div class="skeleton" style="height:60px"></div>
+      <div class="skeleton" style="height:60px"></div>
+    </div>`;
+}
+
+function renderResult(r) {
+  const lang = currentLang;
+  const info = TUMOR_INFO[r.type] || TUMOR_INFO.unclear;
+  const iLang = info[lang] || info.en;
+  const detected = r.detected;
+  const conf = r.confidence || 0;
+  const confColor = conf >= 80 ? 'var(--green)' : conf >= 60 ? 'var(--yellow)' : 'var(--red)';
+  const loc = (lang === 'zh' && r.location_zh) ? r.location_zh : r.location;
+  const obs = (lang === 'zh' && r.observations_zh && r.observations_zh.length) ? r.observations_zh : (r.observations || []);
+
+  const qBadge = document.getElementById('result-quality-badge');
+  qBadge.style.display = 'block';
+  qBadge.textContent = t('qual_' + (r.quality || 'fair')) + ' ' + t('quality');
+
+  document.getElementById('result-body').innerHTML = `
+    <div class="result-status">
+      <div class="status-badge ${detected ? 'tumor' : 'normal'}">
+        ${detected ? '🔴' : '🟢'} ${t(detected ? 'detected' : 'normal')}
+      </div>
+    </div>
+    <div class="tumor-type-card">
+      <div class="tumor-type-name">${iLang.name}</div>
+      <div class="tumor-type-sub">${iLang.sub}</div>
+    </div>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">${t('conf')}</div>
+        <div class="metric-val conf">${conf}%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">${t('severity')}</div>
+        <div class="metric-val sev-${r.severity || 'none'}">${t('sev_' + (r.severity || 'none'))}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">${t('quality')}</div>
+        <div class="metric-val qual-${r.quality || 'fair'}">${t('qual_' + (r.quality || 'fair'))}</div>
+      </div>
+    </div>
+    <div class="conf-bar-wrap">
+      <div class="conf-bar-label"><span>${t('conf')}</span><span style="color:${confColor};font-weight:700">${conf}%</span></div>
+      <div class="conf-bar-bg">
+        <div class="conf-bar-fill" style="width:0%;background:linear-gradient(90deg,#6d28d9,#a855f7)" id="conf-bar"></div>
+      </div>
+    </div>
+    <div class="location-row">
+      <span class="loc-icon">📍</span>
+      <div><strong style="color:var(--text);font-size:12px">${t('location_label')}</strong><br>${loc || '—'}</div>
+    </div>
+    <div class="obs-section">
+      <div class="obs-title">${t('observations_title')}</div>
+      <div class="obs-list">
+        ${obs.map(o => `<div class="obs-item"><span class="obs-dot"></span>${o}</div>`).join('')}
+      </div>
+    </div>
+    <div class="disclaimer"><span>⚠</span><span>${t('disclaimer').replace('⚠ ','')}</span></div>
+    <div class="info-section">
+      <div class="info-grid">
+        <div><div class="info-item-title">${t('cause_title')}</div><div class="info-item-text">${iLang.cause}</div></div>
+        <div><div class="info-item-title">${t('treatment_title')}</div><div class="info-item-text">${iLang.treatment}</div></div>
+        <div><div class="info-item-title">${t('recovery_title')}</div><div class="info-item-text">${iLang.prognosis}</div></div>
+      </div>
+    </div>`;
+
+  setTimeout(() => {
+    const bar = document.getElementById('conf-bar');
+    if (bar) bar.style.width = conf + '%';
+  }, 100);
+}
+
+function showResultError(msg) {
+  document.getElementById('result-body').innerHTML = `
+    <div class="result-empty">
+      <div class="big-icon">⚠️</div>
+      <div style="font-size:14px;font-weight:600;color:var(--red)">Analysis Failed</div>
+      <div style="font-size:12px;color:var(--text2);max-width:280px;text-align:center;line-height:1.6">${msg}</div>
+    </div>`;
+}
+
+// ── Bounding Box Overlay ──
+function drawBBoxes(bboxes) {
+  const img = document.getElementById('preview-img');
+  const canvas = document.getElementById('result-canvas');
+  if (!img || !canvas || !bboxes || bboxes.length === 0) return;
+
+  function render() {
+    const dispW = img.clientWidth;
+    const dispH = img.clientHeight;
+    canvas.width = dispW;
+    canvas.height = dispH;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, dispW, dispH);
+
+    const imgAspect = (img.naturalWidth || dispW) / (img.naturalHeight || dispH);
+    const canvasAspect = dispW / dispH;
+    let renderW, renderH, offsetX, offsetY;
+    if (imgAspect > canvasAspect) {
+      renderW = dispW; renderH = dispW / imgAspect;
+      offsetX = 0; offsetY = (dispH - renderH) / 2;
+    } else {
+      renderH = dispH; renderW = dispH * imgAspect;
+      offsetX = (dispW - renderW) / 2; offsetY = 0;
+    }
+
+    const COLORS = { red:'#ff4d6d', blue:'#00b4ff', green:'#00d97e', yellow:'#ffd60a', purple:'#a855f7' };
+
+    bboxes.forEach(box => {
+      const color = COLORS[box.color] || '#a855f7';
+      const x = offsetX + box.x * renderW;
+      const y = offsetY + box.y * renderH;
+      const w = box.w * renderW;
+      const h = box.h * renderH;
+      const conf = box.confidence || 0;
+      const label = (currentLang === 'en' ? box.label_en : box.label) || box.label_en || box.label;
+
+      ctx.save();
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 14;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, w, h);
+
+      const cs = Math.min(w, h) * 0.15;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x, y+cs); ctx.lineTo(x, y); ctx.lineTo(x+cs, y);
+      ctx.moveTo(x+w-cs, y); ctx.lineTo(x+w, y); ctx.lineTo(x+w, y+cs);
+      ctx.moveTo(x+w, y+h-cs); ctx.lineTo(x+w, y+h); ctx.lineTo(x+w-cs, y+h);
+      ctx.moveTo(x+cs, y+h); ctx.lineTo(x, y+h); ctx.lineTo(x, y+h-cs);
+      ctx.stroke();
+      ctx.restore();
+
+      const fontSize = Math.max(11, Math.min(14, renderW * 0.025));
+      ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+      const labelText = `${label} ${conf}%`;
+      const textW = ctx.measureText(labelText).width + 10;
+      const textH = fontSize + 8;
+      const labelY = y > textH + 4 ? y - textH - 2 : y + 2;
+
+      ctx.save();
+      ctx.fillStyle = color + 'cc';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x, labelY, textW, textH, 4);
+      else ctx.rect(x, labelY, textW, textH);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+      ctx.fillText(labelText, x + 5, labelY + textH - 5);
+    });
+  }
+
+  if (img.complete && img.naturalWidth > 0) render();
+  else img.onload = render;
+  window._bboxData = bboxes;
+  window.addEventListener('resize', () => { if (window._bboxData) drawBBoxes(window._bboxData); }, {once:true});
+}
+
+// ── History ──
+function saveHistory(result) {
+  if (!currentImage) return;
+  const entry = { id:Date.now(), time:new Date().toLocaleString(), type:result.type,
+    confidence:result.confidence, detected:result.detected,
+    thumb:'data:'+currentMime+';base64,'+currentImage, result };
+  history.unshift(entry);
+  if (history.length > 8) history = history.slice(0, 8);
+  localStorage.setItem('bsai-brain-history', JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const section = document.getElementById('history-section');
+  const grid = document.getElementById('history-grid');
+  if (history.length === 0) { section.style.display='none'; return; }
+  section.style.display = 'block';
+  const info = (type) => (TUMOR_INFO[type] || TUMOR_INFO.unclear)[currentLang] || (TUMOR_INFO[type] || TUMOR_INFO.unclear).en;
+  grid.innerHTML = history.map(h => `
+    <div class="history-item" onclick="loadHistoryItem(${h.id})">
+      <img class="history-thumb" src="${h.thumb}" alt="">
+      <div class="history-info">
+        <div class="history-type">${info(h.type).name}</div>
+        <div class="history-time">${h.confidence}% · ${h.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+function loadHistoryItem(id) {
+  const h = history.find(x => x.id === id);
+  if (!h) return;
+  currentImage = h.thumb.split(',')[1];
+  currentMime = h.thumb.split(':')[1].split(';')[0];
+  showImagePreview(h.thumb, 'history', 0);
+  document.getElementById('btn-analyze').disabled = false;
+  window._lastResult = h.result;
+  renderResult(h.result);
+  setTimeout(() => drawBBoxes(h.result.bboxes || []), 50);
+}
+
+function clearHistory() {
+  history = [];
+  localStorage.removeItem('bsai-brain-history');
+  renderHistory();
+}
+
+function showToast(msg, type = 'info') {
+  const toast = document.getElementById('toast');
+  const icon = document.getElementById('toast-icon');
+  const msgEl = document.getElementById('toast-msg');
+  clearTimeout(toastTimer);
+  toast.className = 'toast ' + type;
+  icon.textContent = type==='error'?'✕':type==='success'?'✓':'ℹ';
+  msgEl.textContent = msg;
+  toast.classList.add('show');
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
